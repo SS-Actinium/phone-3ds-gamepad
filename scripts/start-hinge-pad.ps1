@@ -21,9 +21,11 @@ $venvPy = ".\.venv\Scripts\python.exe"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $desktop = [Environment]::GetFolderPath("Desktop")
-$deskBat = Join-Path $desktop "Start Hinge Pad.bat"
-$launcherBat = Join-Path $root "Start-HingePad.bat"
-Set-Content -Path $deskBat -Value "@echo off`r`ncall `"$launcherBat`"`r`n"
+$deskVbs = Join-Path $desktop "Start Hinge Pad.vbs"
+$srcVbs = Join-Path $root "Start-HingePad.vbs"
+if (Test-Path $srcVbs) {
+    Copy-Item $srcVbs $deskVbs -Force
+}
 
 $pythonw = ".\.venv\Scripts\pythonw.exe"
 if (Test-Path $pythonw) {

@@ -30,7 +30,7 @@ def release_stuck_modifiers() -> None:
     if sys.platform != "win32":
         return
     keyup = 0x0002
-    for vk in (0x11, 0xA2, 0xA3, 0x10, 0xA0, 0xA1, 0x12, 0xA4, 0xA5):
+    for vk in (0x10, 0x11, 0x12, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0x5B, 0x5C):
         try:
             ctypes.windll.user32.keybd_event(vk, 0, keyup, 0)
         except Exception:
@@ -65,6 +65,7 @@ class HingePadApp:
         self.ips = lan_ips()
         self.primary = self.ips[0] if self.ips else "—"
 
+        release_stuck_modifiers()
         self.root = tk.Tk()
         self.root.title("Hinge Pad")
         self.root.geometry("560x520")
@@ -74,6 +75,7 @@ class HingePadApp:
 
         self._build()
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.root.bind("<FocusIn>", lambda _e: release_stuck_modifiers())
         self.root.after(50, release_stuck_modifiers)
         self.root.after(200, self.start)
 
