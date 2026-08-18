@@ -4,7 +4,8 @@
 
 - PC: Python 3.10+, stdlib UDP, `vgamepad` / ViGEmBus, XInput virtual pad
 - Phone: Kotlin, Jetpack Compose, DatagramSocket on IO dispatcher
-- Protocol: UTF-8 JSON over UDP, default port 26760 (not DSU)
+- Protocol: UTF-8 JSON over UDP (full or compact `t/b/s`), default port 26760 (not DSU)
+- Profiles: `xbox` letter-match · `3ds` positional Nintendo diamond for Azahar Auto Map
 
 ## Standing orders
 

@@ -1,14 +1,15 @@
 package dev.ssactinium.phone3dsgamepad.ui.pad
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,19 +21,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.ssactinium.phone3dsgamepad.controller.WidgetSpot
 import dev.ssactinium.phone3dsgamepad.network.LinkStatus
 import dev.ssactinium.phone3dsgamepad.network.SessionUiState
+import dev.ssactinium.phone3dsgamepad.protocol.ControlProfile
 import dev.ssactinium.phone3dsgamepad.protocol.PadButton
 import dev.ssactinium.phone3dsgamepad.protocol.StickSample
-import dev.ssactinium.phone3dsgamepad.ui.theme.Bezel
 import dev.ssactinium.phone3dsgamepad.ui.theme.FaceA
 import dev.ssactinium.phone3dsgamepad.ui.theme.FaceB
 import dev.ssactinium.phone3dsgamepad.ui.theme.FaceX
 import dev.ssactinium.phone3dsgamepad.ui.theme.FaceY
 import dev.ssactinium.phone3dsgamepad.ui.theme.HingeGold
-import dev.ssactinium.phone3dsgamepad.ui.theme.HingeShadow
 import dev.ssactinium.phone3dsgamepad.ui.theme.Housing
 import dev.ssactinium.phone3dsgamepad.ui.theme.HudMono
 import dev.ssactinium.phone3dsgamepad.ui.theme.Ink
@@ -40,198 +43,128 @@ import dev.ssactinium.phone3dsgamepad.ui.theme.InkMute
 import dev.ssactinium.phone3dsgamepad.ui.theme.LedDead
 import dev.ssactinium.phone3dsgamepad.ui.theme.LedLive
 import dev.ssactinium.phone3dsgamepad.ui.theme.LedWait
-import dev.ssactinium.phone3dsgamepad.ui.theme.Screw
+import kotlin.math.roundToInt
 
 @Composable
 fun GamepadScreen(
     link: SessionUiState,
+    profile: ControlProfile,
+    arrange: Boolean,
+    spots: List<WidgetSpot>,
     onPress: (PadButton) -> Unit,
     onRelease: (PadButton) -> Unit,
-    onStick: (StickSample) -> Unit,
-    onStickRelease: () -> Unit,
+    onStick: (String, StickSample) -> Unit,
+    onStickRelease: (String) -> Unit,
+    onMoveWidget: (String, Float, Float) -> Unit,
+    onToggleProfile: () -> Unit,
+    onToggleArrange: () -> Unit,
+    onOpenRemap: () -> Unit,
     onDisconnect: () -> Unit,
 ) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(Housing)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-    ) {
-        HingeRail()
-        Spacer(Modifier.height(6.dp))
-        StatusRow(link, onDisconnect)
-        Spacer(Modifier.height(4.dp))
-        Row(
+    Box(Modifier.fillMaxSize().background(Housing)) {
+        BoxWithConstraints(
             Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            verticalAlignment = Alignment.Top,
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .fillMaxSize()
+                .padding(top = 34.dp),
         ) {
-            LeftCluster(onPress, onRelease, onStick, onStickRelease)
-            CenterWell(onPress, onRelease)
-            RightCluster(onPress, onRelease)
-        }
-    }
-}
-
-@Composable
-private fun HingeRail() {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(10.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(HingeShadow),
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(4.dp)
-                .background(HingeGold),
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            repeat(5) {
+            val w = constraints.maxWidth.toFloat().coerceAtLeast(1f)
+            val h = constraints.maxHeight.toFloat().coerceAtLeast(1f)
+            spots.forEach { spot ->
+                val px = (spot.x * w).roundToInt()
+                val py = (spot.y * h).roundToInt()
                 Box(
                     Modifier
-                        .size(6.dp)
-                        .clip(CircleShape)
-                        .background(Screw),
-                )
+                        .offset { IntOffset(px, py) }
+                        .then(
+                            if (arrange) {
+                                Modifier
+                                    .border(1.dp, HingeGold.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                                    .pointerInput(spot.id, spot.x, spot.y, w, h) {
+                                        detectDragGestures { change, drag ->
+                                            change.consume()
+                                            val nx = (spot.x * w + drag.x) / w
+                                            val ny = (spot.y * h + drag.y) / h
+                                            onMoveWidget(spot.id, nx, ny)
+                                        }
+                                    }
+                            } else Modifier,
+                        ),
+                ) {
+                    when (spot.id) {
+                        "circle" -> CirclePad(
+                            onMove = { onStick("left", it) },
+                            onRelease = { onStickRelease("left") },
+                            size = 150.dp,
+                        )
+                        "cstick" -> CirclePad(
+                            onMove = { onStick("right", it) },
+                            onRelease = { onStickRelease("right") },
+                            size = 92.dp,
+                        )
+                        "dpad" -> DPad(onPressed = onPress, onReleased = onRelease, size = 108.dp)
+                        "A" -> GameButton("A", FaceA, { onPress(PadButton.A) }, { onRelease(PadButton.A) }, size = 66.dp)
+                        "B" -> GameButton("B", FaceB, { onPress(PadButton.B) }, { onRelease(PadButton.B) }, size = 66.dp)
+                        "X" -> GameButton("X", FaceX, { onPress(PadButton.X) }, { onRelease(PadButton.X) }, size = 66.dp)
+                        "Y" -> GameButton("Y", FaceY, { onPress(PadButton.Y) }, { onRelease(PadButton.Y) }, size = 66.dp)
+                        "L" -> ShoulderButton("L", { onPress(PadButton.L) }, { onRelease(PadButton.L) }, width = 78.dp)
+                        "R" -> ShoulderButton("R", { onPress(PadButton.R) }, { onRelease(PadButton.R) }, width = 78.dp)
+                        "ZL" -> ShoulderButton("ZL", { onPress(PadButton.ZL) }, { onRelease(PadButton.ZL) }, width = 58.dp, compact = true)
+                        "ZR" -> ShoulderButton("ZR", { onPress(PadButton.ZR) }, { onRelease(PadButton.ZR) }, width = 58.dp, compact = true)
+                        "START" -> TinyButton("START", { onPress(PadButton.START) }, { onRelease(PadButton.START) })
+                        "SELECT" -> TinyButton("SELECT", { onPress(PadButton.SELECT) }, { onRelease(PadButton.SELECT) })
+                        "HOME" -> TinyButton("HOME", { onPress(PadButton.HOME) }, { onRelease(PadButton.HOME) })
+                    }
+                }
             }
         }
+        StatusBar(
+            link = link,
+            profile = profile,
+            arrange = arrange,
+            onToggleProfile = onToggleProfile,
+            onToggleArrange = onToggleArrange,
+            onOpenRemap = onOpenRemap,
+            onDisconnect = onDisconnect,
+        )
     }
 }
 
 @Composable
-private fun StatusRow(link: SessionUiState, onDisconnect: () -> Unit) {
+private fun StatusBar(
+    link: SessionUiState,
+    profile: ControlProfile,
+    arrange: Boolean,
+    onToggleProfile: () -> Unit,
+    onToggleArrange: () -> Unit,
+    onOpenRemap: () -> Unit,
+    onDisconnect: () -> Unit,
+) {
     val led = when (link.status) {
         LinkStatus.Connected -> LedLive
         LinkStatus.Connecting, LinkStatus.Degraded -> LedWait
         else -> LedDead
     }
     Row(
-        Modifier.fillMaxWidth(),
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier
-                    .size(9.dp)
-                    .clip(CircleShape)
-                    .background(led),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(link.detail, style = HudMono.copy(color = Ink, fontSize = 12.sp))
-        }
-        TextButton(onClick = onDisconnect) {
-            Text("Disconnect", color = InkMute, fontSize = 13.sp)
-        }
-    }
-}
-
-@Composable
-private fun LeftCluster(
-    onPress: (PadButton) -> Unit,
-    onRelease: (PadButton) -> Unit,
-    onStick: (StickSample) -> Unit,
-    onStickRelease: () -> Unit,
-) {
-    Column(horizontalAlignment = Alignment.Start) {
-        Row {
-            ShoulderButton("ZL", { onPress(PadButton.ZL) }, { onRelease(PadButton.ZL) }, width = 64.dp, compact = true)
-            Spacer(Modifier.width(8.dp))
-            ShoulderButton("L", { onPress(PadButton.L) }, { onRelease(PadButton.L) }, width = 86.dp)
-        }
-        Spacer(Modifier.height(10.dp))
-        CirclePad(
-            onMove = onStick,
-            onRelease = onStickRelease,
-            size = 168.dp,
+        Box(Modifier.size(8.dp).clip(CircleShape).background(led))
+        Spacer(Modifier.width(6.dp))
+        Text(
+            link.detail,
+            style = HudMono.copy(color = Ink, fontSize = 11.sp),
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
         )
-        Spacer(Modifier.height(10.dp))
-        DPad(onPressed = onPress, onReleased = onRelease, size = 118.dp)
-    }
-}
-
-@Composable
-private fun CenterWell(
-    onPress: (PadButton) -> Unit,
-    onRelease: (PadButton) -> Unit,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(top = 28.dp),
-    ) {
-        Box(
-            Modifier
-                .width(92.dp)
-                .height(64.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Bezel),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("HINGE", color = HingeGold, fontSize = 11.sp, letterSpacing = 3.sp)
+        TextButton(onClick = onToggleProfile) {
+            Text(if (profile == ControlProfile.N3ds) "3DS" else "XBOX", color = HingeGold, fontSize = 12.sp)
         }
-        Spacer(Modifier.height(16.dp))
-        Row {
-            TinyButton("SELECT", { onPress(PadButton.SELECT) }, { onRelease(PadButton.SELECT) })
-            Spacer(Modifier.width(10.dp))
-            TinyButton("START", { onPress(PadButton.START) }, { onRelease(PadButton.START) })
+        TextButton(onClick = onOpenRemap) { Text("Map", color = Ink, fontSize = 12.sp) }
+        TextButton(onClick = onToggleArrange) {
+            Text(if (arrange) "Done" else "Move", color = if (arrange) HingeGold else Ink, fontSize = 12.sp)
         }
-        Spacer(Modifier.height(10.dp))
-        TinyButton("HOME", { onPress(PadButton.HOME) }, { onRelease(PadButton.HOME) })
-    }
-}
-
-@Composable
-private fun RightCluster(
-    onPress: (PadButton) -> Unit,
-    onRelease: (PadButton) -> Unit,
-) {
-    Column(horizontalAlignment = Alignment.End) {
-        Row {
-            ShoulderButton("R", { onPress(PadButton.R) }, { onRelease(PadButton.R) }, width = 86.dp)
-            Spacer(Modifier.width(8.dp))
-            ShoulderButton("ZR", { onPress(PadButton.ZR) }, { onRelease(PadButton.ZR) }, width = 64.dp, compact = true)
-        }
-        Spacer(Modifier.height(18.dp))
-        // 3DS diamond: X north, A east, B south, Y west. Letters map 1:1 to Xbox.
-        Box(Modifier.size(210.dp), contentAlignment = Alignment.Center) {
-            GameButton(
-                "X",
-                FaceX,
-                { onPress(PadButton.X) },
-                { onRelease(PadButton.X) },
-                Modifier.align(Alignment.TopCenter),
-                72.dp,
-            )
-            GameButton(
-                "A",
-                FaceA,
-                { onPress(PadButton.A) },
-                { onRelease(PadButton.A) },
-                Modifier.align(Alignment.CenterEnd),
-                72.dp,
-            )
-            GameButton(
-                "Y",
-                FaceY,
-                { onPress(PadButton.Y) },
-                { onRelease(PadButton.Y) },
-                Modifier.align(Alignment.CenterStart),
-                72.dp,
-            )
-            GameButton(
-                "B",
-                FaceB,
-                { onPress(PadButton.B) },
-                { onRelease(PadButton.B) },
-                Modifier.align(Alignment.BottomCenter),
-                72.dp,
-            )
-        }
+        TextButton(onClick = onDisconnect) { Text("Leave", color = InkMute, fontSize = 12.sp) }
     }
 }

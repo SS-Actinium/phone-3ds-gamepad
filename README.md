@@ -8,7 +8,7 @@ Android touch  →  Wi-Fi UDP JSON  →  Python server  →  vgamepad  →  Xbox
 
 The phone is the control surface only. The PC does **not** stream its screen.
 
-Version **0.1.0**.
+Version **0.2.0**.
 
 ## What you get
 
@@ -40,7 +40,7 @@ pip install -r requirements.txt
 
 `pip install vgamepad` starts the ViGEmBus driver installer. Accept UAC and finish it. Reboot if Windows does not list a new Xbox 360 controller.
 
-Or double-click `scripts\run-server.bat`.
+**One click:** double-click `Start-HingePad.bat` in the project folder (a Desktop copy is created on first run). A small window starts the server and shows this PC’s Wi-Fi IP. Leave it open.
 
 ## Find the PC LAN IP
 
@@ -99,9 +99,9 @@ Axis lines are rate-limited so the console does not flood.
 
 ### Ready-made APK (sideload)
 
-A debug APK is attached to the [GitHub release](https://github.com/SS-Actinium/phone-3ds-gamepad/releases/tag/v0.1.0) and, if you built locally, at:
+A debug APK is attached to the [GitHub release](https://github.com/SS-Actinium/phone-3ds-gamepad/releases/tag/v0.2.0) and, if you built locally, at:
 
-`dist/HingePad-0.1.0-debug.apk`
+`dist/HingePad-0.2.0-debug.apk`
 
 1. Copy the APK to the phone (USB, Drive, Telegram to yourself, etc.).
 2. On the phone: Settings → Security → allow **Install unknown apps** for Files / Chrome / Drive.

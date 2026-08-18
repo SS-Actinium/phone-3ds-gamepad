@@ -13,6 +13,8 @@ class ControllerState {
     private val buttons = mutableMapOf<String, Boolean>()
     @Volatile var leftStick: StickSample = StickSample(0f, 0f)
         private set
+    @Volatile var rightStick: StickSample = StickSample(0f, 0f)
+        private set
 
     fun setButton(button: PadButton, pressed: Boolean): Boolean {
         val previous = buttons[button.wire] == true
@@ -21,12 +23,13 @@ class ControllerState {
         return true
     }
 
-    fun setLeftStick(sample: StickSample): Boolean {
-        if (leftStick.nearlyEquals(sample)) {
-            leftStick = sample
+    fun setStick(axis: String, sample: StickSample): Boolean {
+        val current = if (axis == "right") rightStick else leftStick
+        if (current.nearlyEquals(sample)) {
+            if (axis == "right") rightStick = sample else leftStick = sample
             return false
         }
-        leftStick = sample
+        if (axis == "right") rightStick = sample else leftStick = sample
         return true
     }
 
@@ -34,11 +37,13 @@ class ControllerState {
         return ControllerSnapshot(
             buttons = buttons.toMap(),
             leftStick = leftStick,
+            rightStick = rightStick,
         )
     }
 
     fun releaseAll() {
         buttons.keys.toList().forEach { buttons[it] = false }
         leftStick = StickSample(0f, 0f)
+        rightStick = StickSample(0f, 0f)
     }
 }

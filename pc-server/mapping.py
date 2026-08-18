@@ -1,6 +1,13 @@
-"""Central 3DS-style control names → Xbox 360 / XInput targets.
+"""3DS-style control names → Xbox 360 / XInput.
 
-Do not swap Nintendo diamond positions to Xbox positions. A means A.
+Profiles
+--------
+xbox  Letter match. Phone A → Xbox A. Use for Arkham Origins and most PC games.
+3ds   Positional Nintendo diamond so Azahar / Citra Auto Map lines up:
+      3DS A (east)  → Xbox B (east)
+      3DS B (south) → Xbox A (south)
+      3DS X (north) → Xbox Y (north)
+      3DS Y (west)  → Xbox X (west)
 """
 
 from __future__ import annotations
@@ -28,7 +35,7 @@ class XboxTarget(str, Enum):
     RIGHT_TRIGGER = "RIGHT_TRIGGER"
 
 
-# 3DS / app button name → Xbox target.
+# Letter-match (default, and the 3DS wire names themselves).
 BUTTON_MAP: dict[str, XboxTarget] = {
     "A": XboxTarget.A,
     "B": XboxTarget.B,
@@ -51,6 +58,15 @@ BUTTON_MAP: dict[str, XboxTarget] = {
     "RSTICK": XboxTarget.RIGHT_THUMB,
 }
 
+# Azahar / Citra Auto Map assumes an Xbox diamond.
+PROFILE_3DS_FACE: dict[str, XboxTarget] = {
+    "A": XboxTarget.B,
+    "B": XboxTarget.A,
+    "X": XboxTarget.Y,
+    "Y": XboxTarget.X,
+}
+
+PROFILES = frozenset({"xbox", "3ds"})
 TRIGGER_BUTTONS = frozenset({XboxTarget.LEFT_TRIGGER, XboxTarget.RIGHT_TRIGGER})
 
 XUSB_NAME: dict[XboxTarget, str] = {
@@ -73,9 +89,70 @@ XUSB_NAME: dict[XboxTarget, str] = {
     XboxTarget.RIGHT_TRIGGER: "RIGHT_TRIGGER",
 }
 
+_ALIAS_TO_TARGET: dict[str, XboxTarget] = {
+    **BUTTON_MAP,
+    "LB": XboxTarget.LEFT_SHOULDER,
+    "RB": XboxTarget.RIGHT_SHOULDER,
+    "LT": XboxTarget.LEFT_TRIGGER,
+    "RT": XboxTarget.RIGHT_TRIGGER,
+}
 
-def map_button(name: str) -> XboxTarget:
-    try:
-        return BUTTON_MAP[name.upper()]
-    except KeyError as exc:
-        raise KeyError(f"no mapping for button {name!r}") from exc
+
+def normalize_profile(name: str | None) -> str:
+    raw = (name or "xbox").strip().lower()
+    if raw in {"n3ds", "nintendo", "azahar", "citra"}:
+        return "3ds"
+    if raw in PROFILES:
+        return raw
+    raise KeyError(f"unknown profile {name!r}")
+
+
+def _lookup_target(token: str) -> XboxTarget:
+    key = token.strip().upper()
+    if key in XboxTarget.__members__:
+        return XboxTarget[key]
+    if key in _ALIAS_TO_TARGET:
+        return _ALIAS_TO_TARGET[key]
+    raise KeyError(f"no mapping for button {token!r}")
+
+
+def map_button(
+    name: str,
+    profile: str = "xbox",
+    remap: dict[str, str] | None = None,
+) -> XboxTarget:
+    key = name.strip().upper()
+    if remap and key in remap:
+        return _lookup_target(remap[key])
+    mode = normalize_profile(profile)
+    if mode == "3ds" and key in PROFILE_3DS_FACE:
+        return PROFILE_3DS_FACE[key]
+    return _lookup_target(key)
+
+
+class InputMapper:
+    """Mutable profile + per-button override used by the live server."""
+
+    def __init__(self, profile: str = "xbox") -> None:
+        self.profile = normalize_profile(profile)
+        self.remap: dict[str, str] = {}
+
+    def set_profile(self, profile: str) -> str:
+        self.profile = normalize_profile(profile)
+        return self.profile
+
+    def set_remap(self, remap: dict[str, str] | None) -> None:
+        cleaned: dict[str, str] = {}
+        if remap:
+            for src, dst in remap.items():
+                src_key = str(src).strip().upper()
+                dst_key = str(dst).strip().upper()
+                if not src_key or not dst_key:
+                    continue
+                _lookup_target(src_key)
+                _lookup_target(dst_key)
+                cleaned[src_key] = dst_key
+        self.remap = cleaned
+
+    def resolve(self, name: str) -> XboxTarget:
+        return map_button(name, self.profile, self.remap)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from mapping import BUTTON_MAP, XboxTarget, map_button
+from mapping import BUTTON_MAP, InputMapper, XboxTarget, map_button
 
 
 def test_default_3ds_letters_are_not_swapped() -> None:
@@ -41,3 +41,24 @@ def test_unknown_mapping() -> None:
 def test_map_is_centralized() -> None:
     # Guard against someone adding a one-off mapping elsewhere.
     assert set(BUTTON_MAP) >= {"A", "B", "X", "Y", "L", "R"}
+
+
+def test_3ds_profile_swaps_face_diamond() -> None:
+    assert map_button("A", "3ds") is XboxTarget.B
+    assert map_button("B", "3ds") is XboxTarget.A
+    assert map_button("X", "3ds") is XboxTarget.Y
+    assert map_button("Y", "3ds") is XboxTarget.X
+    assert map_button("L", "3ds") is XboxTarget.LEFT_SHOULDER
+
+
+def test_xbox_profile_keeps_letters() -> None:
+    assert map_button("A", "xbox") is XboxTarget.A
+    assert map_button("B", "xbox") is XboxTarget.B
+
+
+def test_custom_remap_overrides_profile() -> None:
+    assert map_button("A", "xbox", {"A": "X"}) is XboxTarget.X
+    mapper = InputMapper("3ds")
+    mapper.set_remap({"A": "START"})
+    assert mapper.resolve("A") is XboxTarget.START
+    assert mapper.resolve("B") is XboxTarget.A

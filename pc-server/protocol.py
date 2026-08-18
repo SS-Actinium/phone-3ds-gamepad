@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-PROTOCOL_VERSION = "0.1.0"
+PROTOCOL_VERSION = "0.2.0"
 MAX_JSON_CHARS = 2048
 
 BUTTON_NAMES = frozenset(
@@ -45,7 +45,20 @@ class HelloMessage:
     kind: str = "hello"
     client: str = "hinge-pad"
     version: str = ""
+    profile: str | None = None
     ts: float | None = None
+
+
+@dataclass(frozen=True)
+class ProfileMessage:
+    kind: str = "profile"
+    profile: str = "xbox"
+
+
+@dataclass(frozen=True)
+class RemapMessage:
+    kind: str = "remap"
+    mapping: dict[str, str] | None = None
 
 
 @dataclass(frozen=True)
@@ -97,6 +110,8 @@ Message = (
     | AxisMessage
     | TriggerMessage
     | StateSyncMessage
+    | ProfileMessage
+    | RemapMessage
 )
 
 
@@ -138,15 +153,38 @@ def _as_mapping(raw: str | bytes | Mapping[str, Any]) -> dict[str, Any]:
     return parsed
 
 
+_COMPACT_TYPES = {
+    "b": "button",
+    "a": "axis",
+    "h": "heartbeat",
+    "p": "profile",
+    "m": "remap",
+    "t": "trigger",
+    "s": "state_sync",
+    "d": "disconnect",
+}
+
+
 def _normalize_legacy(data: dict[str, Any]) -> dict[str, Any]:
-    if "type" in data:
-        return data
-    if "button" in data and "state" in data:
-        out = dict(data)
+    out = dict(data)
+    if "type" not in out and "t" in out:
+        raw = out["t"]
+        if isinstance(raw, str):
+            out["type"] = _COMPACT_TYPES.get(raw.lower(), raw)
+    if "button" not in out and "b" in out:
+        out["button"] = out["b"]
+    if "state" not in out and "s" in out and out.get("type") in {None, "button"}:
+        out["state"] = out["s"]
+    if "axis" not in out and "a" in out and out.get("type") in {None, "axis"}:
+        if not isinstance(out["a"], (int, float)):
+            out["axis"] = out["a"]
+    if "type" in out:
+        return out
+    if "button" in out and "state" in out:
         out["type"] = "button"
         return out
-    if "joystick" in data:
-        stick = data["joystick"]
+    if "joystick" in out:
+        stick = out["joystick"]
         if not isinstance(stick, (list, tuple)) or len(stick) != 2:
             raise ProtocolError("joystick must be [x, y]")
         return {
@@ -154,7 +192,7 @@ def _normalize_legacy(data: dict[str, Any]) -> dict[str, Any]:
             "axis": "left",
             "x": stick[0],
             "y": stick[1],
-            "ts": data.get("ts"),
+            "ts": out.get("ts"),
         }
     raise ProtocolError("missing type")
 
@@ -199,9 +237,36 @@ def parse_packet(raw: str | bytes | Mapping[str, Any]) -> Message:
     if kind == "hello":
         client = data.get("client", "hinge-pad")
         version = data.get("version", "")
+        profile = data.get("profile")
         if not isinstance(client, str) or not isinstance(version, str):
             raise ProtocolError("hello fields invalid")
-        return HelloMessage(client=client[:64], version=version[:32], ts=ts_val)
+        if profile is not None and not isinstance(profile, str):
+            raise ProtocolError("hello profile invalid")
+        return HelloMessage(
+            client=client[:64],
+            version=version[:32],
+            profile=profile,
+            ts=ts_val,
+        )
+
+    if kind == "profile":
+        profile = data.get("profile", data.get("p", "xbox"))
+        if not isinstance(profile, str) or not profile:
+            raise ProtocolError("profile required")
+        return ProfileMessage(profile=profile.strip().lower())
+
+    if kind == "remap":
+        raw_map = data.get("map", data.get("mapping", {}))
+        if raw_map is None:
+            raw_map = {}
+        if not isinstance(raw_map, dict):
+            raise ProtocolError("remap map must be an object")
+        cleaned: dict[str, str] = {}
+        for src, dst in raw_map.items():
+            if not isinstance(src, str) or not isinstance(dst, str):
+                raise ProtocolError("remap keys and values must be strings")
+            cleaned[src.strip().upper()] = dst.strip().upper()
+        return RemapMessage(mapping=cleaned)
 
     if kind == "heartbeat":
         return HeartbeatMessage(ts=ts_val)

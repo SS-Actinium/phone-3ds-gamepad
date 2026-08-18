@@ -113,3 +113,21 @@ def test_boolean_state() -> None:
 def test_nan_rejected() -> None:
     with pytest.raises(ProtocolError):
         parse_packet('{"type":"axis","axis":"left","x":NaN,"y":0}')
+
+
+def test_compact_button_packet() -> None:
+    msg = parse_packet('{"t":"b","b":"A","s":1}')
+    assert isinstance(msg, ButtonMessage)
+    assert msg.button == "A"
+    assert msg.state == 1
+
+
+def test_profile_and_remap_packets() -> None:
+    from protocol import ProfileMessage, RemapMessage
+
+    prof = parse_packet('{"type":"profile","profile":"3ds"}')
+    assert isinstance(prof, ProfileMessage)
+    assert prof.profile == "3ds"
+    remap = parse_packet('{"type":"remap","map":{"A":"X"}}')
+    assert isinstance(remap, RemapMessage)
+    assert remap.mapping == {"A": "X"}

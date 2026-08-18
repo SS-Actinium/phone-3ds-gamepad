@@ -2,20 +2,16 @@ package dev.ssactinium.phone3dsgamepad.network
 
 import android.util.Log
 import dev.ssactinium.phone3dsgamepad.controller.ControllerState
+import dev.ssactinium.phone3dsgamepad.protocol.ControlProfile
 import dev.ssactinium.phone3dsgamepad.protocol.PacketEncoder
 import dev.ssactinium.phone3dsgamepad.protocol.PadButton
 import dev.ssactinium.phone3dsgamepad.protocol.Protocol
 import dev.ssactinium.phone3dsgamepad.protocol.StickSample
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.concurrent.thread
 
 enum class LinkStatus {
     Idle,
@@ -35,140 +31,178 @@ data class SessionUiState(
 class ControllerSession {
     private val transport = UdpTransport()
     private val state = ControllerState()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var pumpJob: Job? = null
-    private var lastAckAt = AtomicLong(0L)
-    private var lastAxisSentAt = 0L
+    private val outbox = ConcurrentLinkedQueue<String>()
+    private val running = AtomicBoolean(false)
+    private val lastAckAt = AtomicLong(0L)
+    private val lastUi = AtomicReference(SessionUiState())
+    private var worker: Thread? = null
     @Volatile private var targetHost: String = ""
     @Volatile private var targetPort: Int = Protocol.DEFAULT_PORT
+    @Volatile private var profile: ControlProfile = ControlProfile.Xbox
+    @Volatile private var remap: Map<String, String> = emptyMap()
+    @Volatile private var lastAxisSentAt = 0L
     @Volatile var uiState: SessionUiState = SessionUiState()
         private set
     var onUi: ((SessionUiState) -> Unit)? = null
 
-    val isLive: Boolean
-        get() = uiState.status == LinkStatus.Connected || uiState.status == LinkStatus.Degraded
-
-    suspend fun test(host: String, port: Int): Boolean {
+    fun test(host: String, port: Int): Boolean {
+        val probe = UdpTransport()
         return try {
-            withContext(Dispatchers.IO) {
-                if (!transport.isOpen) transport.bind()
-                transport.sendAndWaitAck(host, port, PacketEncoder.hello(), "hello_ack")
+            probe.bindAndConnect(host.trim(), port)
+            probe.send(PacketEncoder.hello(profile.wire))
+            val deadline = System.currentTimeMillis() + 800
+            var ok = false
+            while (System.currentTimeMillis() < deadline) {
+                val reply = probe.receiveOrNull() ?: continue
+                if (PacketEncoder.parseType(reply) == "hello_ack") {
+                    ok = true
+                    break
+                }
             }
+            ok
         } catch (exc: Exception) {
             Log.w(TAG, "test failed", exc)
             false
+        } finally {
+            probe.close()
         }
     }
 
-    fun connect(host: String, port: Int) {
+    fun connect(host: String, port: Int, profile: ControlProfile, remap: Map<String, String>) {
         targetHost = host.trim()
         targetPort = port
+        this.profile = profile
+        this.remap = remap
+        stopWorker()
         publish(LinkStatus.Connecting, "Connecting to $host:$port")
-        pumpJob?.cancel()
-        pumpJob = scope.launch {
-            try {
-                transport.bind()
-                transport.send(targetHost, targetPort, PacketEncoder.hello())
-                lastAckAt.set(0L)
-                receiveLoop()
-            } catch (exc: Exception) {
-                Log.e(TAG, "connect failed", exc)
-                publish(LinkStatus.Error, exc.message ?: "Network error")
-            }
+        running.set(true)
+        worker = thread(name = "hinge-udp", isDaemon = true, priority = Thread.MAX_PRIORITY) {
+            ioLoop()
         }
     }
 
     fun disconnect() {
-        scope.launch {
-            try {
-                if (transport.isOpen && targetHost.isNotBlank()) {
-                    transport.send(targetHost, targetPort, PacketEncoder.disconnect())
-                }
-            } catch (exc: Exception) {
-                Log.w(TAG, "disconnect send failed", exc)
-            } finally {
-                pumpJob?.cancel()
-                transport.close()
-                state.releaseAll()
-                publish(LinkStatus.Idle, "Disconnected")
-            }
+        outbox.clear()
+        outbox.offer(PacketEncoder.disconnect())
+        try {
+            Thread.sleep(40)
+        } catch (_: InterruptedException) {
+            // ignore
         }
+        stopWorker()
+        state.releaseAll()
+        publish(LinkStatus.Idle, "Disconnected")
     }
 
     fun shutdown() {
         disconnect()
-        scope.cancel()
     }
 
-    fun press(button: PadButton) = emitButton(button, true)
+    fun press(button: PadButton) {
+        if (!state.setButton(button, true)) return
+        enqueue(PacketEncoder.button(button.wire, true))
+    }
 
-    fun release(button: PadButton) = emitButton(button, false)
+    fun release(button: PadButton) {
+        if (!state.setButton(button, false)) return
+        enqueue(PacketEncoder.button(button.wire, false))
+    }
 
-    fun moveStick(sample: StickSample) {
-        if (!state.setLeftStick(sample) && sample.x == 0f && sample.y == 0f) return
+    fun moveStick(axis: String, sample: StickSample) {
+        if (!state.setStick(axis, sample) && sample.x == 0f && sample.y == 0f) return
         val now = System.currentTimeMillis()
         val minGap = 1000L / Protocol.AXIS_MAX_HZ
         if (now - lastAxisSentAt < minGap && !sample.nearlyEquals(StickSample(0f, 0f), 0.001f)) {
             return
         }
         lastAxisSentAt = now
-        send(PacketEncoder.axis("left", sample.x, sample.y))
+        enqueue(PacketEncoder.axis(axis, sample.x, sample.y))
     }
 
-    private fun emitButton(button: PadButton, pressed: Boolean) {
-        if (!state.setButton(button, pressed)) return
-        send(PacketEncoder.button(button.wire, pressed))
+    fun applyMap(profile: ControlProfile, remap: Map<String, String>) {
+        this.profile = profile
+        this.remap = remap
+        enqueue(PacketEncoder.profile(profile.wire))
+        enqueue(PacketEncoder.remap(remap))
     }
 
-    private fun send(json: String) {
-        if (!transport.isOpen || targetHost.isBlank()) return
+    private fun enqueue(packet: String) {
+        if (outbox.size > 80) outbox.poll()
+        outbox.offer(packet)
+    }
+
+    private fun stopWorker() {
+        running.set(false)
+        worker?.interrupt()
+        worker = null
+        transport.close()
+    }
+
+    private fun ioLoop() {
         try {
-            transport.send(targetHost, targetPort, json)
-        } catch (exc: Exception) {
-            Log.w(TAG, "send failed", exc)
-            publish(LinkStatus.Error, exc.message ?: "Send failed")
-        }
-    }
-
-    private suspend fun receiveLoop() {
-        var lastHeartbeat = 0L
-        var lastSync = 0L
-        while (scope.isActive && transport.isOpen) {
-            val now = System.currentTimeMillis()
-            val reply = transport.receiveOrNull()
-            if (reply != null) {
-                val type = PacketEncoder.parseType(reply)
-                if (type == "hello_ack" || type == "heartbeat_ack") {
-                    lastAckAt.set(now)
-                    publish(LinkStatus.Connected, "Connected to $targetHost:$targetPort")
+            transport.bindAndConnect(targetHost, targetPort)
+            enqueue(PacketEncoder.hello(profile.wire))
+            enqueue(PacketEncoder.profile(profile.wire))
+            enqueue(PacketEncoder.remap(remap))
+            var lastHeartbeat = 0L
+            var lastSync = 0L
+            var fails = 0
+            while (running.get()) {
+                var outgoing = outbox.poll()
+                while (outgoing != null) {
+                    if (!transport.send(outgoing)) {
+                        fails += 1
+                    } else {
+                        fails = 0
+                    }
+                    outgoing = outbox.poll()
+                }
+                val reply = transport.receiveOrNull()
+                val now = System.currentTimeMillis()
+                if (reply != null) {
+                    val type = PacketEncoder.parseType(reply)
+                    if (type == "hello_ack" || type == "heartbeat_ack") {
+                        lastAckAt.set(now)
+                        if (type == "hello_ack") {
+                            publish(LinkStatus.Connected, "Connected to $targetHost:$targetPort")
+                        } else if (uiState.status != LinkStatus.Connected) {
+                            publish(LinkStatus.Connected, "Connected to $targetHost:$targetPort")
+                        }
+                    }
+                }
+                if (now - lastHeartbeat >= Protocol.HEARTBEAT_MS) {
+                    enqueue(PacketEncoder.heartbeat())
+                    lastHeartbeat = now
+                }
+                if (now - lastSync >= Protocol.STATE_SYNC_MS && uiState.status == LinkStatus.Connected) {
+                    val snap = state.snapshot()
+                    enqueue(PacketEncoder.stateSync(snap.buttons, snap.leftStick, snap.rightStick))
+                    lastSync = now
+                }
+                val ack = lastAckAt.get()
+                if (ack == 0L && now - lastHeartbeat > Protocol.ACK_STALE_MS) {
+                    publish(LinkStatus.Degraded, "No ack — still sending")
+                } else if (ack > 0L && now - ack > Protocol.ACK_STALE_MS && uiState.status == LinkStatus.Connected) {
+                    publish(LinkStatus.Degraded, "Link stall — still sending")
+                }
+                if (fails >= 40) {
+                    publish(LinkStatus.Degraded, "Network drops — still retrying")
+                    fails = 0
                 }
             }
-            if (now - lastHeartbeat >= Protocol.HEARTBEAT_MS) {
-                send(PacketEncoder.heartbeat(now))
-                lastHeartbeat = now
-            }
-            if (now - lastSync >= Protocol.STATE_SYNC_MS && isLive) {
-                val snap = state.snapshot()
-                send(PacketEncoder.stateSync(snap.buttons, snap.leftStick, snap.rightStick))
-                lastSync = now
-            }
-            val ackAge = now - lastAckAt.get()
-            if (lastAckAt.get() == 0L && now - lastHeartbeat > Protocol.ACK_STALE_MS) {
-                publish(LinkStatus.Degraded, "No ack from $targetHost:$targetPort")
-            } else if (lastAckAt.get() > 0L && ackAge > Protocol.ACK_STALE_MS) {
-                publish(LinkStatus.Degraded, "Link stall — still sending")
-            }
-            delay(16)
+        } catch (exc: Exception) {
+            Log.e(TAG, "io loop", exc)
+            publish(LinkStatus.Error, exc.message ?: "Network error")
+        } finally {
+            transport.close()
         }
     }
 
     private fun publish(status: LinkStatus, detail: String) {
-        val next = SessionUiState(
-            status = status,
-            host = targetHost,
-            port = targetPort,
-            detail = detail,
-        )
+        val next = SessionUiState(status, targetHost, targetPort, detail)
+        val prev = lastUi.get()
+        if (prev.status == next.status && prev.detail == next.detail) return
+        lastUi.set(next)
         uiState = next
         onUi?.invoke(next)
     }

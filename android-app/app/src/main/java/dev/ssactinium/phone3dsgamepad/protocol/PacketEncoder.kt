@@ -3,47 +3,27 @@ package dev.ssactinium.phone3dsgamepad.protocol
 import org.json.JSONObject
 
 object PacketEncoder {
-    fun hello(nowMs: Long = System.currentTimeMillis()): String {
-        return JSONObject()
-            .put("type", "hello")
-            .put("client", Protocol.CLIENT_NAME)
-            .put("version", Protocol.VERSION)
-            .put("ts", nowMs)
-            .toString()
+    fun hello(profile: String, nowMs: Long = System.currentTimeMillis()): String {
+        return """{"type":"hello","client":"${Protocol.CLIENT_NAME}","version":"${Protocol.VERSION}","profile":"$profile","ts":$nowMs}"""
     }
 
-    fun heartbeat(nowMs: Long = System.currentTimeMillis()): String {
-        return JSONObject()
-            .put("type", "heartbeat")
-            .put("ts", nowMs)
-            .toString()
-    }
+    fun heartbeat(): String = """{"t":"h"}"""
 
-    fun disconnect(): String = JSONObject().put("type", "disconnect").toString()
+    fun disconnect(): String = """{"type":"disconnect"}"""
 
     fun button(name: String, pressed: Boolean): String {
-        return JSONObject()
-            .put("type", "button")
-            .put("button", name)
-            .put("state", if (pressed) 1 else 0)
-            .toString()
+        return """{"t":"b","b":"$name","s":${if (pressed) 1 else 0}}"""
     }
 
     fun axis(axis: String, x: Float, y: Float): String {
-        return JSONObject()
-            .put("type", "axis")
-            .put("axis", axis)
-            .put("x", x.toDouble())
-            .put("y", y.toDouble())
-            .toString()
+        return """{"t":"a","a":"$axis","x":${fmt(x)},"y":${fmt(y)}}"""
     }
 
-    fun trigger(side: String, value: Float): String {
-        return JSONObject()
-            .put("type", "trigger")
-            .put("trigger", side)
-            .put("value", value.toDouble())
-            .toString()
+    fun profile(name: String): String = """{"type":"profile","profile":"$name"}"""
+
+    fun remap(map: Map<String, String>): String {
+        val body = map.entries.joinToString(",") { (k, v) -> "\"$k\":\"$v\"" }
+        return """{"type":"remap","map":{$body}}"""
     }
 
     fun stateSync(
@@ -64,10 +44,20 @@ object PacketEncoder {
     }
 
     fun parseType(json: String): String? {
-        return try {
-            JSONObject(json).optString("type").ifBlank { null }
-        } catch (_: Exception) {
-            null
+        val key = "\"type\":\""
+        val i = json.indexOf(key)
+        if (i < 0) {
+            if (json.contains("\"t\":\"h\"")) return "heartbeat"
+            return null
         }
+        val start = i + key.length
+        val end = json.indexOf('"', start)
+        if (end <= start) return null
+        return json.substring(start, end)
+    }
+
+    private fun fmt(value: Float): String {
+        val clamped = value.coerceIn(-1f, 1f)
+        return ((clamped * 1000f).toInt() / 1000f).toString()
     }
 }

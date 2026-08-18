@@ -21,10 +21,25 @@ The server’s job is to present a **standard Xbox 360 / XInput** device. Button
 | Emulator | Where to bind |
 |----------|----------------|
 | Dolphin | Controllers → Standard Controller → XInput/0 |
-| Citra / Azahar / PabloMK7 | Emulation → Configure → Controls → SDL/XInput |
+| Azahar Plus / Azahar / Citra | Emulation → Configure → Controls. Start Hinge Pad **before** Azahar. On the phone choose **3DS / Azahar**. Then Auto Map, or bind A on the phone to 3DS A. |
 | lime3ds / similar 3DS | Input → Gamepad |
 | RetroArch | Settings → Input → Port 1 → XInput |
 | RPCS3 / yuzu-class | Player 1 → SDL/XInput device 0 |
+| Batman Arkham Origins | Use the **Xbox** preset. Steam/XInput picks up the virtual 360 pad. |
+
+## Azahar Plus (why it failed before)
+
+Azahar Auto Map treats the virtual pad as an **Xbox** diamond (A south, B east). Hinge Pad labels follow a **3DS** diamond (A east, B south). Letter-match made in-game A/B feel swapped or dead.
+
+1. Double-click `Start-HingePad.bat` and wait until the log says Listening.
+2. Confirm `joy.cpl` shows Xbox 360 Controller.
+3. **Then** start Azahar Plus.
+4. On the phone: **3DS / Azahar** → Connect.
+5. Azahar → Emulation → Configure → Controls → **Auto Map** (or click 3DS A and press A on the phone).
+6. Save a profile named `hinge-3ds`.
+7. If the pad is missing: close Azahar, leave the server running, open Azahar again.
+
+C-Stick is the smaller right pad (New 3DS camera). Circle Pad is the large left pad.
 
 ## Test path
 

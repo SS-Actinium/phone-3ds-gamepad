@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.ssactinium.phone3dsgamepad.network.LinkStatus
 import dev.ssactinium.phone3dsgamepad.network.SessionUiState
+import dev.ssactinium.phone3dsgamepad.protocol.ControlProfile
 import dev.ssactinium.phone3dsgamepad.ui.theme.Bezel
 import dev.ssactinium.phone3dsgamepad.ui.theme.BrandTitle
 import dev.ssactinium.phone3dsgamepad.ui.theme.FieldStroke
@@ -51,8 +52,10 @@ fun ConnectScreen(
     link: SessionUiState,
     busy: Boolean,
     notice: String,
+    profile: ControlProfile,
     onHost: (String) -> Unit,
     onPort: (String) -> Unit,
+    onProfile: (ControlProfile) -> Unit,
     onConnect: () -> Unit,
     onTest: () -> Unit,
 ) {
@@ -90,7 +93,7 @@ fun ConnectScreen(
                     Text("SAME WI-FI AS THE PC", color = HingeGold, fontSize = 11.sp, letterSpacing = 1.6.sp)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "1. Start the Python server on Windows.\n2. Enter the PC LAN IP and port 26760.\n3. Test, then connect. Play on the PC screen.",
+                        "1. Double-click Start-HingePad.bat on the PC.\n2. Enter the PC LAN IP and port 26760.\n3. Pick Xbox games or 3DS / Azahar.\n4. Test, then connect.",
                         color = Ink,
                         fontSize = 14.sp,
                         lineHeight = 20.sp,
@@ -132,6 +135,12 @@ fun ConnectScreen(
                 modifier = Modifier.fillMaxWidth(),
                 colors = fieldColors(),
             )
+            Spacer(Modifier.height(10.dp))
+            FieldLabel("Control preset")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PresetChip("Xbox games", profile == ControlProfile.Xbox) { onProfile(ControlProfile.Xbox) }
+                PresetChip("3DS / Azahar", profile == ControlProfile.N3ds) { onProfile(ControlProfile.N3ds) }
+            }
             if (notice.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Text(notice, color = if (link.status == LinkStatus.Error) LedDead else Ink, fontSize = 13.sp)
@@ -152,6 +161,17 @@ fun ConnectScreen(
             }
         }
     }
+}
+
+@Composable
+private fun PresetChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (selected) HingeGold else HousingInset,
+            contentColor = if (selected) Housing else Ink,
+        ),
+    ) { Text(label, fontSize = 12.sp) }
 }
 
 @Composable

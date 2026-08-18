@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Protocol, runtime_checkable
 
-from mapping import TRIGGER_BUTTONS, XboxTarget, map_button
+from mapping import TRIGGER_BUTTONS, InputMapper, XboxTarget
 from protocol import (
     AxisMessage,
     ButtonMessage,
@@ -152,6 +152,7 @@ class VirtualController:
         self.deadzone = deadzone
         self.invert_left_y = invert_left_y
         self.invert_right_y = invert_right_y
+        self.mapper = InputMapper()
         self.pressed: set[XboxTarget] = set()
         self.axes: dict[str, tuple[float, float]] = {
             "left": (0.0, 0.0),
@@ -191,7 +192,7 @@ class VirtualController:
         log.info("[PAD] Reset (%s)", reason)
 
     def _set_button(self, name: str, state: int) -> list[str]:
-        target = map_button(name)
+        target = self.mapper.resolve(name)
         if state:
             if target in self.pressed and target not in TRIGGER_BUTTONS:
                 return []

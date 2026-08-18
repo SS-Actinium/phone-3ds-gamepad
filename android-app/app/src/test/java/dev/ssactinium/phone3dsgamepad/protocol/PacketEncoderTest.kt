@@ -7,34 +7,35 @@ import org.junit.Test
 
 class PacketEncoderTest {
     @Test
-    fun buttonPressSerializesCanonicalShape() {
+    fun buttonPressSerializesCompactShape() {
         val json = JSONObject(PacketEncoder.button("A", true))
-        assertEquals("button", json.getString("type"))
-        assertEquals("A", json.getString("button"))
-        assertEquals(1, json.getInt("state"))
+        assertEquals("b", json.getString("t"))
+        assertEquals("A", json.getString("b"))
+        assertEquals(1, json.getInt("s"))
     }
 
     @Test
     fun buttonReleaseSerializesZero() {
         val json = JSONObject(PacketEncoder.button("B", false))
-        assertEquals(0, json.getInt("state"))
+        assertEquals(0, json.getInt("s"))
     }
 
     @Test
     fun axisUsesNormalizedFloats() {
         val json = JSONObject(PacketEncoder.axis("left", 0.5f, -0.25f))
-        assertEquals("axis", json.getString("type"))
-        assertEquals("left", json.getString("axis"))
+        assertEquals("a", json.getString("t"))
+        assertEquals("left", json.getString("a"))
         assertEquals(0.5, json.getDouble("x"), 0.0001)
         assertEquals(-0.25, json.getDouble("y"), 0.0001)
     }
 
     @Test
-    fun helloContainsClientAndVersion() {
-        val json = JSONObject(PacketEncoder.hello(1L))
+    fun helloContainsClientVersionAndProfile() {
+        val json = JSONObject(PacketEncoder.hello("3ds", 1L))
         assertEquals("hello", json.getString("type"))
         assertEquals("hinge-pad", json.getString("client"))
         assertEquals(Protocol.VERSION, json.getString("version"))
+        assertEquals("3ds", json.getString("profile"))
     }
 
     @Test

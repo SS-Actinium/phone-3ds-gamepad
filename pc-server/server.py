@@ -16,7 +16,9 @@ from protocol import (
     DisconnectMessage,
     HeartbeatMessage,
     HelloMessage,
+    ProfileMessage,
     ProtocolError,
+    RemapMessage,
     heartbeat_ack,
     hello_ack,
     parse_packet,
@@ -107,12 +109,35 @@ class UdpGamepadServer:
         self._idle_reset_done = False
 
         if isinstance(message, HelloMessage):
+            if message.profile:
+                try:
+                    applied = self.controller.mapper.set_profile(message.profile)
+                    log.info("[MAP] Profile %s", applied)
+                except KeyError as exc:
+                    log.debug("[MAP] %s", exc)
             self._reply(hello_ack(), addr)
             log.info(
-                "[CLIENT] Hello client=%s version=%s",
+                "[CLIENT] Hello client=%s version=%s profile=%s",
                 message.client,
                 message.version or "?",
+                self.controller.mapper.profile,
             )
+            return
+
+        if isinstance(message, ProfileMessage):
+            try:
+                applied = self.controller.mapper.set_profile(message.profile)
+                log.info("[MAP] Profile %s", applied)
+            except KeyError as exc:
+                log.debug("[MAP] %s", exc)
+            return
+
+        if isinstance(message, RemapMessage):
+            try:
+                self.controller.mapper.set_remap(message.mapping)
+                log.info("[MAP] Remap %s", self.controller.mapper.remap or "{}")
+            except KeyError as exc:
+                log.debug("[MAP] %s", exc)
             return
 
         if isinstance(message, HeartbeatMessage):
@@ -207,6 +232,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Invert Circle Pad Y if an emulator feels upside-down",
     )
+    parser.add_argument(
+        "--profile",
+        default=None,
+        choices=["xbox", "3ds"],
+        help="Initial map: xbox (letter) or 3ds (Azahar/Citra Auto Map)",
+    )
     return parser.parse_args(argv)
 
 
@@ -235,6 +266,9 @@ def main(argv: list[str] | None = None) -> int:
         invert_left_y=config.invert_left_y,
         invert_right_y=config.invert_right_y,
     )
+    if args.profile:
+        controller.mapper.set_profile(args.profile)
+        log.info("[MAP] Default profile %s", args.profile)
     server = UdpGamepadServer(config, controller)
 
     def _shutdown(signum: int, _frame: object) -> None:

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0 — 2026-08-18
+
+### Added
+
+- One-click `Start-HingePad.bat` + desktop window (no PowerShell typing)
+- Xbox vs 3DS / Azahar control presets
+- Custom per-button remap sheet
+- Drag-to-move layout on the phone (`Move` then `Done`)
+- Right-stick C-Stick pad for New 3DS camera
+- Compact UDP packets and a single I/O thread
+
+### Fixed
+
+- “Send failed” spam from using DatagramSocket on two threads
+- Input delay from recomposing the whole pad on every heartbeat
+- Azahar Plus Auto Map mismatch (Nintendo diamond vs Xbox diamond)
+- Heavy shadows/gradients that stuttered on Helio P35 / PowerVR GE8320
+
 ## 0.1.0 — 2026-08-18
 
 ### Added
