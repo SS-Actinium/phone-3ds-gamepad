@@ -41,7 +41,7 @@ $apk = Join-Path $android "app\build\outputs\apk\debug\app-debug.apk"
 if (-not (Test-Path $apk)) { throw "APK not produced: $apk" }
 
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
-$out = Join-Path $dist "HingePad-0.2.0-debug.apk"
+$out = Join-Path $dist "HingePad-0.2.1-debug.apk"
 Copy-Item $apk $out -Force
 Write-Output "APK: $out"
 Write-Output ("Size: {0:N1} KB" -f ((Get-Item $out).Length / 1KB))

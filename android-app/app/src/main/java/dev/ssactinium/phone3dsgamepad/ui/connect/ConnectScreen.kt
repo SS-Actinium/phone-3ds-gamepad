@@ -1,6 +1,8 @@
 package dev.ssactinium.phone3dsgamepad.ui.connect
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,12 +11,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
@@ -31,8 +37,6 @@ import androidx.compose.ui.unit.sp
 import dev.ssactinium.phone3dsgamepad.network.LinkStatus
 import dev.ssactinium.phone3dsgamepad.network.SessionUiState
 import dev.ssactinium.phone3dsgamepad.protocol.ControlProfile
-import dev.ssactinium.phone3dsgamepad.ui.theme.Bezel
-import dev.ssactinium.phone3dsgamepad.ui.theme.BrandTitle
 import dev.ssactinium.phone3dsgamepad.ui.theme.FieldStroke
 import dev.ssactinium.phone3dsgamepad.ui.theme.HingeGold
 import dev.ssactinium.phone3dsgamepad.ui.theme.Housing
@@ -65,119 +69,135 @@ fun ConnectScreen(
         LinkStatus.Error -> LedDead
         LinkStatus.Idle -> InkMute
     }
-    Row(
+    Column(
         Modifier
             .fillMaxSize()
             .background(Housing)
-            .padding(24.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(28.dp),
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
-        Column(Modifier.weight(1.05f)) {
-            Text("HINGE PAD", style = BrandTitle.copy(color = HingeGold))
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "Phone becomes a handheld-style pad. PC sees an Xbox 360 controller.",
-                color = InkMute,
-                fontSize = 15.sp,
-            )
-            Spacer(Modifier.height(18.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Bezel)
-                    .padding(16.dp),
-            ) {
-                Column {
-                    Text("SAME WI-FI AS THE PC", color = HingeGold, fontSize = 11.sp, letterSpacing = 1.6.sp)
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "1. Double-click Start-HingePad.bat on the PC.\n2. Enter the PC LAN IP and port 26760.\n3. Pick Xbox games or 3DS / Azahar.\n4. Test, then connect.",
-                        color = Ink,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
-                    )
-                }
-            }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("HINGE PAD", color = HingeGold, fontSize = 20.sp, letterSpacing = 2.sp)
+            Spacer(Modifier.weight(1f))
+            Box(Modifier.size(8.dp).clip(CircleShape).background(led))
+            Spacer(Modifier.width(6.dp))
+            Text(link.detail.ifBlank { "Disconnected" }, style = HudMono.copy(color = Ink, fontSize = 11.sp), maxLines = 1)
         }
+        Spacer(Modifier.height(8.dp))
         Column(
             Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(18.dp))
-                .background(HousingRaised)
-                .padding(20.dp),
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(10.dp).clip(CircleShape).background(led))
-                Spacer(Modifier.width(8.dp))
-                Text(link.detail.ifBlank { "Disconnected" }, style = HudMono.copy(color = Ink))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CompactField(
+                    label = "PC IP",
+                    value = host,
+                    placeholder = "192.168.1.10",
+                    keyboard = KeyboardType.Decimal,
+                    onValue = onHost,
+                    modifier = Modifier.weight(1.4f),
+                )
+                CompactField(
+                    label = "Port",
+                    value = port,
+                    placeholder = "26760",
+                    keyboard = KeyboardType.Number,
+                    onValue = onPort,
+                    modifier = Modifier.weight(0.7f),
+                )
             }
-            Spacer(Modifier.height(16.dp))
-            FieldLabel("PC IP address")
-            OutlinedTextField(
-                value = host,
-                onValueChange = onHost,
-                singleLine = true,
-                placeholder = { Text("192.168.1.10", color = InkMute) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth(),
-                colors = fieldColors(),
-            )
             Spacer(Modifier.height(10.dp))
-            FieldLabel("UDP port")
-            OutlinedTextField(
-                value = port,
-                onValueChange = onPort,
-                singleLine = true,
-                placeholder = { Text("26760", color = InkMute) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                colors = fieldColors(),
-            )
-            Spacer(Modifier.height(10.dp))
-            FieldLabel("Control preset")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PresetChip("Xbox games", profile == ControlProfile.Xbox) { onProfile(ControlProfile.Xbox) }
-                PresetChip("3DS / Azahar", profile == ControlProfile.N3ds) { onProfile(ControlProfile.N3ds) }
+            Text("Play as", color = InkMute, fontSize = 11.sp, letterSpacing = 0.8.sp)
+            Spacer(Modifier.height(6.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PresetChip(
+                    "Xbox",
+                    "Arkham / PC",
+                    profile == ControlProfile.Xbox,
+                    Modifier.weight(1f),
+                ) { onProfile(ControlProfile.Xbox) }
+                PresetChip(
+                    "3DS",
+                    "Azahar / Citra",
+                    profile == ControlProfile.N3ds,
+                    Modifier.weight(1f),
+                ) { onProfile(ControlProfile.N3ds) }
             }
             if (notice.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Text(notice, color = if (link.status == LinkStatus.Error) LedDead else Ink, fontSize = 13.sp)
             }
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(
-                    onClick = onTest,
-                    enabled = !busy,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, HingeGold),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = HingeGold),
-                ) { Text("Test") }
-                Button(
-                    onClick = onConnect,
-                    enabled = !busy,
-                    colors = ButtonDefaults.buttonColors(containerColor = HingeGold, contentColor = Housing),
-                ) { Text("Connect") }
-            }
+            Spacer(Modifier.height(8.dp))
+        }
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            OutlinedButton(
+                onClick = onTest,
+                enabled = !busy,
+                modifier = Modifier.weight(1f).height(48.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, HingeGold),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = HingeGold),
+            ) { Text("Test") }
+            Button(
+                onClick = onConnect,
+                enabled = !busy,
+                modifier = Modifier.weight(1.4f).height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = HingeGold, contentColor = Housing),
+            ) { Text("Connect") }
         }
     }
 }
 
 @Composable
-private fun PresetChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (selected) HingeGold else HousingInset,
-            contentColor = if (selected) Housing else Ink,
-        ),
-    ) { Text(label, fontSize = 12.sp) }
+private fun CompactField(
+    label: String,
+    value: String,
+    placeholder: String,
+    keyboard: KeyboardType,
+    onValue: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier) {
+        Text(label, color = InkMute, fontSize = 11.sp, letterSpacing = 0.6.sp)
+        Spacer(Modifier.height(4.dp))
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValue,
+            singleLine = true,
+            placeholder = { Text(placeholder, color = InkMute, fontSize = 14.sp) },
+            keyboardOptions = KeyboardOptions(keyboardType = keyboard),
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            textStyle = HudMono.copy(fontSize = 15.sp, color = Ink),
+            colors = fieldColors(),
+        )
+    }
 }
 
 @Composable
-private fun FieldLabel(text: String) {
-    Text(text, color = InkMute, fontSize = 12.sp, letterSpacing = 0.8.sp)
-    Spacer(Modifier.height(4.dp))
+private fun PresetChip(
+    title: String,
+    subtitle: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(12.dp)
+    Column(
+        modifier
+            .clip(shape)
+            .background(if (selected) HingeGold else HousingRaised)
+            .border(1.dp, if (selected) HingeGold else FieldStroke, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Text(title, color = if (selected) Housing else Ink, fontSize = 16.sp)
+        Text(subtitle, color = if (selected) Housing.copy(alpha = 0.75f) else InkMute, fontSize = 11.sp)
+    }
 }
 
 @Composable

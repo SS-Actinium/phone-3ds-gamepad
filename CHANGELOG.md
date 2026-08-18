@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.1 — 2026-08-18
+
+### Fixed
+
+- Connect screen on small landscape phones: Xbox/3DS, Test, and Connect stay on screen (scroll + pinned actions)
+- Keyboard no longer covers Connect (`adjustResize`)
+
+### Changed
+
+- PC starter is a real window: large IP, port 26760, Copy buttons, and a teal **Server started** status
+- Double-click `Start-HingePad.bat` opens the app with no extra PowerShell window after first setup
+
 ## 0.2.0 — 2026-08-18
 
 ### Added
