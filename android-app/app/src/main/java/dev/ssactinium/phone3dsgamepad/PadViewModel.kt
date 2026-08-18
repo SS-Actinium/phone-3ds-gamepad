@@ -46,6 +46,8 @@ class PadViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var showRemap by mutableStateOf(false)
         private set
+    var invertStick by mutableStateOf(prefs.getBoolean(KEY_INVERT, profile == ControlProfile.N3ds))
+        private set
 
     init {
         session.onUi = { next ->
@@ -69,8 +71,9 @@ class PadViewModel(app: Application) : AndroidViewModel(app) {
 
     fun applyProfile(next: ControlProfile) {
         profile = next
+        invertStick = next == ControlProfile.N3ds
         persist()
-        if (onPad) session.applyMap(profile, remap)
+        if (onPad) session.applyMap(profile, remap, invertStick)
     }
 
     fun toggleProfile() {
@@ -80,13 +83,19 @@ class PadViewModel(app: Application) : AndroidViewModel(app) {
     fun setRemapEntry(src: String, dst: String) {
         remap = remap + (src to dst)
         persist()
-        if (onPad) session.applyMap(profile, remap)
+        if (onPad) session.applyMap(profile, remap, invertStick)
     }
 
     fun clearRemap() {
         remap = emptyMap()
         persist()
-        if (onPad) session.applyMap(profile, remap)
+        if (onPad) session.applyMap(profile, remap, invertStick)
+    }
+
+    fun toggleInvertStick() {
+        invertStick = !invertStick
+        persist()
+        if (onPad) session.applyMap(profile, remap, invertStick)
     }
 
     fun toggleArrange() {
@@ -133,7 +142,7 @@ class PadViewModel(app: Application) : AndroidViewModel(app) {
     fun connect() {
         val parsed = parsedTarget() ?: return
         persist()
-        session.connect(parsed.first, parsed.second, profile, remap)
+        session.connect(parsed.first, parsed.second, profile, remap, invertStick)
         onPad = true
     }
 
@@ -179,6 +188,7 @@ class PadViewModel(app: Application) : AndroidViewModel(app) {
             .putString(KEY_PROFILE, profile.wire)
             .putString(KEY_REMAP, JSONObject().also { obj -> remap.forEach { (k, v) -> obj.put(k, v) } }.toString())
             .putString(KEY_LAYOUT, PadLayout.toJson(spots))
+            .putBoolean(KEY_INVERT, invertStick)
             .apply()
     }
 
@@ -204,5 +214,6 @@ class PadViewModel(app: Application) : AndroidViewModel(app) {
         private const val KEY_PROFILE = "profile"
         private const val KEY_REMAP = "remap"
         private const val KEY_LAYOUT = "layout"
+        private const val KEY_INVERT = "invert_stick"
     }
 }

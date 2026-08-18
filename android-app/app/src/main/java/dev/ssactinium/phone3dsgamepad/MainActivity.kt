@@ -71,8 +71,11 @@ private fun HingePadRoot(model: PadViewModel) {
         RemapSheet(
             profile = model.profile,
             remap = model.remap,
+            invertStick = model.invertStick,
             onPick = model::setRemapEntry,
             onClear = model::clearRemap,
+            onToggleInvert = model::toggleInvertStick,
+            onPreset = model::applyProfile,
             onClose = model::toggleRemapSheet,
         )
         return

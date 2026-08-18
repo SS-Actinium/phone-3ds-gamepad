@@ -21,6 +21,10 @@ object PacketEncoder {
 
     fun profile(name: String): String = """{"type":"profile","profile":"$name"}"""
 
+    fun options(invertLeftY: Boolean, invertRightY: Boolean): String {
+        return """{"type":"options","invert_left_y":${if (invertLeftY) "true" else "false"},"invert_right_y":${if (invertRightY) "true" else "false"}}"""
+    }
+
     fun remap(map: Map<String, String>): String {
         val body = map.entries.joinToString(",") { (k, v) -> "\"$k\":\"$v\"" }
         return """{"type":"remap","map":{$body}}"""

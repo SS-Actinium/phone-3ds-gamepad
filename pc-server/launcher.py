@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ctypes
 import socket
 import subprocess
 import sys
@@ -22,6 +23,18 @@ MUTE = "#8B9098"
 TEAL = "#2EC4B6"
 RED = "#CF3E3E"
 AMBER = "#E0B44A"
+
+
+def release_stuck_modifiers() -> None:
+    """cmd.exe start/exit can leave Ctrl down. Force key-up."""
+    if sys.platform != "win32":
+        return
+    keyup = 0x0002
+    for vk in (0x11, 0xA2, 0xA3, 0x10, 0xA0, 0xA1, 0x12, 0xA4, 0xA5):
+        try:
+            ctypes.windll.user32.keybd_event(vk, 0, keyup, 0)
+        except Exception:
+            pass
 
 
 def lan_ips() -> list[str]:
@@ -61,6 +74,7 @@ class HingePadApp:
 
         self._build()
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.root.after(50, release_stuck_modifiers)
         self.root.after(200, self.start)
 
     def _build(self) -> None:

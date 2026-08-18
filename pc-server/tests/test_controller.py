@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import time
 
+import pytest
+
 from config import Config
 from controller import FakeGamepad, VirtualController
 from protocol import AxisMessage, ButtonMessage, StateSyncMessage, parse_packet
@@ -42,7 +44,9 @@ def test_deadzone_on_controller() -> None:
 def test_axis_clamped_before_backend() -> None:
     ctl, pad = make_controller()
     ctl.apply(parse_packet('{"type":"axis","axis":"left","x":5,"y":-5}'))
-    assert pad.axes["left"] == (1.0, -1.0)
+    x, y = pad.axes["left"]
+    assert x == pytest.approx(0.7071, abs=0.01)
+    assert y == pytest.approx(-0.7071, abs=0.01)
 
 
 def test_state_sync_recovers_release() -> None:

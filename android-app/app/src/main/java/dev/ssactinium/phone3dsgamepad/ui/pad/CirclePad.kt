@@ -29,7 +29,8 @@ fun CirclePad(
     onRelease: () -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = 168.dp,
-    deadzone: Float = 0.10f,
+    deadzone: Float = 0.0f,
+    enabled: Boolean = true,
 ) {
     var knob by remember { mutableStateOf(Offset.Zero) }
     var trackingId by remember { mutableStateOf<Long?>(null) }
@@ -37,7 +38,8 @@ fun CirclePad(
     Box(
         modifier
             .size(size)
-            .pointerInput(deadzone) {
+            .pointerInput(deadzone, enabled) {
+                if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()

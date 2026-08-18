@@ -31,6 +31,7 @@ fun DPad(
     onReleased: (PadButton) -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = 132.dp,
+    enabled: Boolean = true,
 ) {
     Box(modifier.size(size), contentAlignment = Alignment.Center) {
         Box(
@@ -45,10 +46,10 @@ fun DPad(
                 .clip(RoundedCornerShape(10.dp))
                 .background(HousingInset),
         )
-        Arm(PadButton.DUP, "▲", Modifier.align(Alignment.TopCenter), onPressed, onReleased, size * 0.34f)
-        Arm(PadButton.DDOWN, "▼", Modifier.align(Alignment.BottomCenter), onPressed, onReleased, size * 0.34f)
-        Arm(PadButton.DLEFT, "◀", Modifier.align(Alignment.CenterStart), onPressed, onReleased, size * 0.34f)
-        Arm(PadButton.DRIGHT, "▶", Modifier.align(Alignment.CenterEnd), onPressed, onReleased, size * 0.34f)
+        Arm(PadButton.DUP, "▲", Modifier.align(Alignment.TopCenter), onPressed, onReleased, size * 0.34f, enabled)
+        Arm(PadButton.DDOWN, "▼", Modifier.align(Alignment.BottomCenter), onPressed, onReleased, size * 0.34f, enabled)
+        Arm(PadButton.DLEFT, "◀", Modifier.align(Alignment.CenterStart), onPressed, onReleased, size * 0.34f, enabled)
+        Arm(PadButton.DRIGHT, "▶", Modifier.align(Alignment.CenterEnd), onPressed, onReleased, size * 0.34f, enabled)
         Box(
             Modifier
                 .size(size * 0.22f)
@@ -67,6 +68,7 @@ private fun Arm(
     onPressed: (PadButton) -> Unit,
     onReleased: (PadButton) -> Unit,
     arm: Dp,
+    enabled: Boolean,
 ) {
     var pressed by remember { mutableStateOf(false) }
     Box(
@@ -74,7 +76,8 @@ private fun Arm(
             .size(arm)
             .clip(RoundedCornerShape(8.dp))
             .background(if (pressed) ShoulderPressed else Shoulder)
-            .pointerInput(button) {
+            .pointerInput(button, enabled) {
+                if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Main)

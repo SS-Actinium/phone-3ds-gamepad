@@ -1,15 +1,15 @@
 package dev.ssactinium.phone3dsgamepad.protocol
 
 object Protocol {
-    const val VERSION = "0.2.0"
+    const val VERSION = "0.3.0"
     const val DEFAULT_PORT = 26760
     const val CLIENT_NAME = "hinge-pad"
     const val MAX_PACKET_BYTES = 2048
     const val HEARTBEAT_MS = 400L
     const val STATE_SYNC_MS = 900L
     const val ACK_STALE_MS = 1800L
-    const val AXIS_SEND_MIN_DELTA = 0.018f
-    const val AXIS_MAX_HZ = 50
+    const val AXIS_SEND_MIN_DELTA = 0.008f
+    const val AXIS_MAX_HZ = 90
 }
 
 enum class ControlProfile(val wire: String, val label: String) {

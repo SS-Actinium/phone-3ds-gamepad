@@ -33,6 +33,7 @@ fun ShoulderButton(
     modifier: Modifier = Modifier,
     width: Dp = 92.dp,
     compact: Boolean = false,
+    enabled: Boolean = true,
 ) {
     var pressed by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(bottomStart = 14.dp, bottomEnd = 14.dp, topStart = 8.dp, topEnd = 8.dp)
@@ -43,7 +44,8 @@ fun ShoulderButton(
             .clip(shape)
             .background(if (pressed) ShoulderPressed else Shoulder)
             .border(1.dp, HingeGold.copy(alpha = if (pressed) 0.55f else 0.22f), shape)
-            .pointerInput(label) {
+            .pointerInput(label, enabled) {
+                if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Main)

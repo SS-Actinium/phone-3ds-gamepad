@@ -78,7 +78,7 @@ def test_deadzone_centers_small_values() -> None:
 
 def test_deadzone_keeps_real_deflection() -> None:
     x, y = apply_deadzone(0.5, 0.0, 0.08)
-    assert x == pytest.approx(0.5)
+    assert x == pytest.approx((0.5 - 0.08) / 0.92)
     assert y == 0.0
 
 

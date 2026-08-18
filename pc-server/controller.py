@@ -153,6 +153,7 @@ class VirtualController:
         self.invert_left_y = invert_left_y
         self.invert_right_y = invert_right_y
         self.mapper = InputMapper()
+        self.user_invert = False
         self.pressed: set[XboxTarget] = set()
         self.axes: dict[str, tuple[float, float]] = {
             "left": (0.0, 0.0),
@@ -204,6 +205,23 @@ class VirtualController:
         self.pressed.discard(target)
         self.backend.release(target)
         return [f"{target.value} UP"]
+
+    def apply_profile_defaults(self, profile: str) -> None:
+        if self.user_invert:
+            return
+        # Azahar/SDL Circle Pad is inverted vs phone screen-up unless we flip Y.
+        flip = profile == "3ds"
+        self.invert_left_y = flip
+        self.invert_right_y = flip
+
+    def apply_options(self, invert_left_y: bool | None, invert_right_y: bool | None) -> None:
+        if invert_left_y is None and invert_right_y is None:
+            return
+        self.user_invert = True
+        if invert_left_y is not None:
+            self.invert_left_y = invert_left_y
+        if invert_right_y is not None:
+            self.invert_right_y = invert_right_y
 
     def _set_axis(self, axis: str, x: float, y: float) -> list[str]:
         invert = self.invert_left_y if axis == "left" else self.invert_right_y

@@ -4,7 +4,7 @@ Kotlin + Jetpack Compose controller. Landscape only. Sends UDP JSON to the Windo
 
 ## Install the APK
 
-Use `../dist/HingePad-0.2.1-debug.apk` (or the GitHub release asset). Uninstall the old Hinge Pad first if Android blocks the update. Copy it to the phone, allow unknown-app installs, then open the file.
+Use `../dist/HingePad-0.3.0-debug.apk` (or the GitHub release asset). Uninstall the old Hinge Pad first if Android blocks the update. Copy it to the phone, allow unknown-app installs, then open the file.
 
 ## Open in Android Studio
 

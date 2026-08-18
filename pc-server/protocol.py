@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-PROTOCOL_VERSION = "0.2.0"
+PROTOCOL_VERSION = "0.3.0"
 MAX_JSON_CHARS = 2048
 
 BUTTON_NAMES = frozenset(
@@ -62,6 +62,13 @@ class RemapMessage:
 
 
 @dataclass(frozen=True)
+class OptionsMessage:
+    kind: str = "options"
+    invert_left_y: bool | None = None
+    invert_right_y: bool | None = None
+
+
+@dataclass(frozen=True)
 class HeartbeatMessage:
     kind: str = "heartbeat"
     ts: float | None = None
@@ -112,6 +119,7 @@ Message = (
     | StateSyncMessage
     | ProfileMessage
     | RemapMessage
+    | OptionsMessage
 )
 
 
@@ -120,14 +128,18 @@ def clamp(value: float, lo: float, hi: float) -> float:
 
 
 def apply_deadzone(x: float, y: float, deadzone: float) -> tuple[float, float]:
-    if deadzone <= 0:
-        return (clamp(x, -1.0, 1.0), clamp(y, -1.0, 1.0))
+    """Radial dead zone, then rescale so the remaining range still reaches 1.0."""
     cx = clamp(x, -1.0, 1.0)
     cy = clamp(y, -1.0, 1.0)
+    if deadzone <= 0:
+        return (cx, cy)
     magnitude = (cx * cx + cy * cy) ** 0.5
-    if magnitude < deadzone:
+    if magnitude < deadzone or magnitude == 0:
         return (0.0, 0.0)
-    return (cx, cy)
+    scale = (magnitude - deadzone) / (1.0 - deadzone)
+    if scale > 1.0:
+        scale = 1.0
+    return (cx / magnitude * scale, cy / magnitude * scale)
 
 
 def _as_mapping(raw: str | bytes | Mapping[str, Any]) -> dict[str, Any]:
@@ -267,6 +279,22 @@ def parse_packet(raw: str | bytes | Mapping[str, Any]) -> Message:
                 raise ProtocolError("remap keys and values must be strings")
             cleaned[src.strip().upper()] = dst.strip().upper()
         return RemapMessage(mapping=cleaned)
+
+    if kind == "options":
+        def _flag(key: str) -> bool | None:
+            if key not in data:
+                return None
+            val = data[key]
+            if val is True or val == 1 or val == "1":
+                return True
+            if val is False or val == 0 or val == "0":
+                return False
+            raise ProtocolError(f"{key} must be boolean")
+
+        return OptionsMessage(
+            invert_left_y=_flag("invert_left_y"),
+            invert_right_y=_flag("invert_right_y"),
+        )
 
     if kind == "heartbeat":
         return HeartbeatMessage(ts=ts_val)

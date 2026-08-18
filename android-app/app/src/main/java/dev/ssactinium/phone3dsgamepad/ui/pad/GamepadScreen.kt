@@ -18,9 +18,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -70,50 +76,23 @@ fun GamepadScreen(
             val w = constraints.maxWidth.toFloat().coerceAtLeast(1f)
             val h = constraints.maxHeight.toFloat().coerceAtLeast(1f)
             spots.forEach { spot ->
-                val px = (spot.x * w).roundToInt()
-                val py = (spot.y * h).roundToInt()
-                Box(
-                    Modifier
-                        .offset { IntOffset(px, py) }
-                        .then(
-                            if (arrange) {
-                                Modifier
-                                    .border(1.dp, HingeGold.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
-                                    .pointerInput(spot.id, spot.x, spot.y, w, h) {
-                                        detectDragGestures { change, drag ->
-                                            change.consume()
-                                            val nx = (spot.x * w + drag.x) / w
-                                            val ny = (spot.y * h + drag.y) / h
-                                            onMoveWidget(spot.id, nx, ny)
-                                        }
-                                    }
-                            } else Modifier,
-                        ),
+                Arrangeable(
+                    id = spot.id,
+                    xFrac = spot.x,
+                    yFrac = spot.y,
+                    parentW = w,
+                    parentH = h,
+                    arrange = arrange,
+                    onMove = { x, y -> onMoveWidget(spot.id, x, y) },
                 ) {
-                    when (spot.id) {
-                        "circle" -> CirclePad(
-                            onMove = { onStick("left", it) },
-                            onRelease = { onStickRelease("left") },
-                            size = 150.dp,
-                        )
-                        "cstick" -> CirclePad(
-                            onMove = { onStick("right", it) },
-                            onRelease = { onStickRelease("right") },
-                            size = 92.dp,
-                        )
-                        "dpad" -> DPad(onPressed = onPress, onReleased = onRelease, size = 108.dp)
-                        "A" -> GameButton("A", FaceA, { onPress(PadButton.A) }, { onRelease(PadButton.A) }, size = 66.dp)
-                        "B" -> GameButton("B", FaceB, { onPress(PadButton.B) }, { onRelease(PadButton.B) }, size = 66.dp)
-                        "X" -> GameButton("X", FaceX, { onPress(PadButton.X) }, { onRelease(PadButton.X) }, size = 66.dp)
-                        "Y" -> GameButton("Y", FaceY, { onPress(PadButton.Y) }, { onRelease(PadButton.Y) }, size = 66.dp)
-                        "L" -> ShoulderButton("L", { onPress(PadButton.L) }, { onRelease(PadButton.L) }, width = 78.dp)
-                        "R" -> ShoulderButton("R", { onPress(PadButton.R) }, { onRelease(PadButton.R) }, width = 78.dp)
-                        "ZL" -> ShoulderButton("ZL", { onPress(PadButton.ZL) }, { onRelease(PadButton.ZL) }, width = 58.dp, compact = true)
-                        "ZR" -> ShoulderButton("ZR", { onPress(PadButton.ZR) }, { onRelease(PadButton.ZR) }, width = 58.dp, compact = true)
-                        "START" -> TinyButton("START", { onPress(PadButton.START) }, { onRelease(PadButton.START) })
-                        "SELECT" -> TinyButton("SELECT", { onPress(PadButton.SELECT) }, { onRelease(PadButton.SELECT) })
-                        "HOME" -> TinyButton("HOME", { onPress(PadButton.HOME) }, { onRelease(PadButton.HOME) })
-                    }
+                    PadWidget(
+                        id = spot.id,
+                        live = !arrange,
+                        onPress = onPress,
+                        onRelease = onRelease,
+                        onStick = onStick,
+                        onStickRelease = onStickRelease,
+                    )
                 }
             }
         }
@@ -126,6 +105,95 @@ fun GamepadScreen(
             onOpenRemap = onOpenRemap,
             onDisconnect = onDisconnect,
         )
+    }
+}
+
+@Composable
+private fun Arrangeable(
+    id: String,
+    xFrac: Float,
+    yFrac: Float,
+    parentW: Float,
+    parentH: Float,
+    arrange: Boolean,
+    onMove: (Float, Float) -> Unit,
+    content: @Composable () -> Unit,
+) {
+    var drag by remember(id) { mutableStateOf(Offset.Zero) }
+    var originX by remember(id) { mutableStateOf(xFrac) }
+    var originY by remember(id) { mutableStateOf(yFrac) }
+    LaunchedEffect(xFrac, yFrac) {
+        if (drag == Offset.Zero) {
+            originX = xFrac
+            originY = yFrac
+        }
+    }
+    val px = (originX * parentW + drag.x).roundToInt()
+    val py = (originY * parentH + drag.y).roundToInt()
+    Box(
+        Modifier
+            .offset { IntOffset(px, py) }
+            .then(
+                if (arrange) {
+                    Modifier
+                        .border(1.dp, HingeGold.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
+                        .pointerInput(id, parentW, parentH) {
+                            detectDragGestures(
+                                onDragEnd = {
+                                    val nx = (originX + drag.x / parentW).coerceIn(0.02f, 0.90f)
+                                    val ny = (originY + drag.y / parentH).coerceIn(0.02f, 0.86f)
+                                    originX = nx
+                                    originY = ny
+                                    onMove(nx, ny)
+                                    drag = Offset.Zero
+                                },
+                                onDrag = { change, amount ->
+                                    change.consume()
+                                    drag += amount
+                                },
+                            )
+                        }
+                } else {
+                    Modifier
+                },
+            ),
+    ) { content() }
+}
+
+@Composable
+private fun PadWidget(
+    id: String,
+    live: Boolean,
+    onPress: (PadButton) -> Unit,
+    onRelease: (PadButton) -> Unit,
+    onStick: (String, StickSample) -> Unit,
+    onStickRelease: (String) -> Unit,
+) {
+    when (id) {
+        "circle" -> CirclePad(
+            onMove = { onStick("left", it) },
+            onRelease = { onStickRelease("left") },
+            size = 158.dp,
+            enabled = live,
+        )
+        "cstick" -> CirclePad(
+            onMove = { onStick("right", it) },
+            onRelease = { onStickRelease("right") },
+            size = 96.dp,
+            enabled = live,
+        )
+        "dpad" -> DPad(onPressed = onPress, onReleased = onRelease, size = 108.dp, enabled = live)
+        "A" -> GameButton("A", FaceA, { onPress(PadButton.A) }, { onRelease(PadButton.A) }, size = 70.dp, enabled = live)
+        "B" -> GameButton("B", FaceB, { onPress(PadButton.B) }, { onRelease(PadButton.B) }, size = 70.dp, enabled = live)
+        "X" -> GameButton("X", FaceX, { onPress(PadButton.X) }, { onRelease(PadButton.X) }, size = 70.dp, enabled = live)
+        "Y" -> GameButton("Y", FaceY, { onPress(PadButton.Y) }, { onRelease(PadButton.Y) }, size = 70.dp, enabled = live)
+        "L" -> ShoulderButton("L", { onPress(PadButton.L) }, { onRelease(PadButton.L) }, width = 78.dp, enabled = live)
+        "R" -> ShoulderButton("R", { onPress(PadButton.R) }, { onRelease(PadButton.R) }, width = 78.dp, enabled = live)
+        "ZL" -> ShoulderButton("ZL", { onPress(PadButton.ZL) }, { onRelease(PadButton.ZL) }, width = 58.dp, compact = true, enabled = live)
+        "ZR" -> ShoulderButton("ZR", { onPress(PadButton.ZR) }, { onRelease(PadButton.ZR) }, width = 58.dp, compact = true, enabled = live)
+        "START" -> TinyButton("START", { onPress(PadButton.START) }, { onRelease(PadButton.START) }, enabled = live)
+        "SELECT" -> TinyButton("SELECT", { onPress(PadButton.SELECT) }, { onRelease(PadButton.SELECT) }, enabled = live)
+        "HOME" -> TinyButton("HOME", { onPress(PadButton.HOME) }, { onRelease(PadButton.HOME) }, enabled = live)
     }
 }
 
@@ -153,7 +221,7 @@ private fun StatusBar(
         Box(Modifier.size(8.dp).clip(CircleShape).background(led))
         Spacer(Modifier.width(6.dp))
         Text(
-            link.detail,
+            if (arrange) "Drag a control. Tap Done when it feels right." else link.detail,
             style = HudMono.copy(color = Ink, fontSize = 11.sp),
             modifier = Modifier.weight(1f),
             maxLines = 1,

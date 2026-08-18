@@ -30,6 +30,7 @@ fun GameButton(
     modifier: Modifier = Modifier,
     size: Dp = 68.dp,
     lite: Boolean = true,
+    enabled: Boolean = true,
 ) {
     var pressed by remember { mutableStateOf(false) }
     Box(
@@ -38,7 +39,8 @@ fun GameButton(
             .clip(CircleShape)
             .background(if (pressed) color.copy(alpha = 0.55f) else color)
             .border(if (lite) 1.dp else 2.dp, Color.White.copy(alpha = if (pressed) 0.45f else 0.16f), CircleShape)
-            .pointerInput(label) {
+            .pointerInput(label, enabled) {
+                if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Main)

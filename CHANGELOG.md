@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 — 2026-08-18
+
+### Fixed
+
+- Azahar Circle Pad: invert Y on 3DS preset, radial dead-zone rescale, no stacked phone dead zone
+- Move-mode drag no longer stutters (local offset, play input disabled while arranging)
+- Batch file no longer leaves Ctrl stuck (VBS/`pythonw` launch + key-up)
+- Remap is a two-tap phone → Xbox flow instead of tiny chips
+
+### Added
+
+- Invert Circle Pad Y toggle on the Map screen
+
 ## 0.2.1 — 2026-08-18
 
 ### Fixed

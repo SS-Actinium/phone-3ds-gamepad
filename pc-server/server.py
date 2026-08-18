@@ -16,6 +16,7 @@ from protocol import (
     DisconnectMessage,
     HeartbeatMessage,
     HelloMessage,
+    OptionsMessage,
     ProfileMessage,
     ProtocolError,
     RemapMessage,
@@ -112,7 +113,8 @@ class UdpGamepadServer:
             if message.profile:
                 try:
                     applied = self.controller.mapper.set_profile(message.profile)
-                    log.info("[MAP] Profile %s", applied)
+                    self.controller.apply_profile_defaults(applied)
+                    log.info("[MAP] Profile %s invertY=%s", applied, self.controller.invert_left_y)
                 except KeyError as exc:
                     log.debug("[MAP] %s", exc)
             self._reply(hello_ack(), addr)
@@ -127,9 +129,19 @@ class UdpGamepadServer:
         if isinstance(message, ProfileMessage):
             try:
                 applied = self.controller.mapper.set_profile(message.profile)
-                log.info("[MAP] Profile %s", applied)
+                self.controller.apply_profile_defaults(applied)
+                log.info("[MAP] Profile %s invertY=%s", applied, self.controller.invert_left_y)
             except KeyError as exc:
                 log.debug("[MAP] %s", exc)
+            return
+
+        if isinstance(message, OptionsMessage):
+            self.controller.apply_options(message.invert_left_y, message.invert_right_y)
+            log.info(
+                "[MAP] Invert leftY=%s rightY=%s",
+                self.controller.invert_left_y,
+                self.controller.invert_right_y,
+            )
             return
 
         if isinstance(message, RemapMessage):

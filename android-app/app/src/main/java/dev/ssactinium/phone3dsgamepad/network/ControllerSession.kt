@@ -40,6 +40,7 @@ class ControllerSession {
     @Volatile private var targetPort: Int = Protocol.DEFAULT_PORT
     @Volatile private var profile: ControlProfile = ControlProfile.Xbox
     @Volatile private var remap: Map<String, String> = emptyMap()
+    @Volatile private var invertStick: Boolean = false
     @Volatile private var lastAxisSentAt = 0L
     @Volatile var uiState: SessionUiState = SessionUiState()
         private set
@@ -68,11 +69,18 @@ class ControllerSession {
         }
     }
 
-    fun connect(host: String, port: Int, profile: ControlProfile, remap: Map<String, String>) {
+    fun connect(
+        host: String,
+        port: Int,
+        profile: ControlProfile,
+        remap: Map<String, String>,
+        invertStick: Boolean,
+    ) {
         targetHost = host.trim()
         targetPort = port
         this.profile = profile
         this.remap = remap
+        this.invertStick = invertStick
         stopWorker()
         publish(LinkStatus.Connecting, "Connecting to $host:$port")
         running.set(true)
@@ -119,11 +127,13 @@ class ControllerSession {
         enqueue(PacketEncoder.axis(axis, sample.x, sample.y))
     }
 
-    fun applyMap(profile: ControlProfile, remap: Map<String, String>) {
+    fun applyMap(profile: ControlProfile, remap: Map<String, String>, invertStick: Boolean) {
         this.profile = profile
         this.remap = remap
+        this.invertStick = invertStick
         enqueue(PacketEncoder.profile(profile.wire))
         enqueue(PacketEncoder.remap(remap))
+        enqueue(PacketEncoder.options(invertStick, invertStick))
     }
 
     private fun enqueue(packet: String) {
@@ -144,6 +154,7 @@ class ControllerSession {
             enqueue(PacketEncoder.hello(profile.wire))
             enqueue(PacketEncoder.profile(profile.wire))
             enqueue(PacketEncoder.remap(remap))
+            enqueue(PacketEncoder.options(invertStick, invertStick))
             var lastHeartbeat = 0L
             var lastSync = 0L
             var fails = 0

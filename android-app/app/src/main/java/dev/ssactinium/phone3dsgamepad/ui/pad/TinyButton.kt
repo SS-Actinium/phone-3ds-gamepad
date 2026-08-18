@@ -30,6 +30,7 @@ fun TinyButton(
     onPressed: () -> Unit,
     onReleased: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     var pressed by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(20.dp)
@@ -40,7 +41,8 @@ fun TinyButton(
             .clip(shape)
             .background(if (pressed) ShoulderPressed else HousingInset)
             .padding(horizontal = 10.dp)
-            .pointerInput(label) {
+            .pointerInput(label, enabled) {
+                if (!enabled) return@pointerInput
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Main)
