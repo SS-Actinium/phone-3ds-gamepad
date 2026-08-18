@@ -97,11 +97,33 @@ Axis lines are rate-limited so the console does not flood.
 
 ## Android installation
 
+### Ready-made APK (sideload)
+
+A debug APK is attached to the [GitHub release](https://github.com/SS-Actinium/phone-3ds-gamepad/releases/tag/v0.1.0) and, if you built locally, at:
+
+`dist/HingePad-0.1.0-debug.apk`
+
+1. Copy the APK to the phone (USB, Drive, Telegram to yourself, etc.).
+2. On the phone: Settings → Security → allow **Install unknown apps** for Files / Chrome / Drive.
+3. Open the APK and install **Hinge Pad**.
+4. Join the **same Wi-Fi** as the PC.
+5. Open the app → enter the PC LAN IP and port `26760` → **Test** then **Connect**.
+
+This debug APK is for personal sideload, not Play Store.
+
+### Build from Android Studio
+
 1. Open `android-app` in Android Studio.
 2. Sync Gradle (8.10.2 / AGP 8.8.2).
 3. Run on a **physical phone** on the same Wi-Fi.
 4. Enter **PC IP** and **UDP port** (26760).
 5. **Test** (waits for `hello_ack`) then **Connect**.
+
+To rebuild the APK from a machine that already has JDK 17 + Android SDK 35:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build-apk.ps1
+```
 
 Status means:
 

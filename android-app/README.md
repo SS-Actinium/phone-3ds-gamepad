@@ -2,6 +2,10 @@
 
 Kotlin + Jetpack Compose controller. Landscape only. Sends UDP JSON to the Windows server.
 
+## Install the APK
+
+Use `../dist/HingePad-0.1.0-debug.apk` (or the GitHub release asset). Copy it to the phone, allow unknown-app installs, then open the file.
+
 ## Open in Android Studio
 
 1. Install [Android Studio](https://developer.android.com/studio) (Ladybug / Meerkat or newer).

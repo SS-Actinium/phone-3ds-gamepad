@@ -61,8 +61,8 @@ private fun HingePadRoot(model: PadViewModel) {
             link = model.link,
             busy = model.busy,
             notice = model.notice,
-            onHost = model::setHost,
-            onPort = model::setPort,
+            onHost = model::updateHost,
+            onPort = model::updatePort,
             onConnect = model::connect,
             onTest = model::test,
         )

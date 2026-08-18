@@ -13,3 +13,8 @@
 - Connection screen with Test / Connect and last-used IP
 - `test_client.py` and pytest coverage for parse, map, dead zone, watchdog
 - Firewall helper, LAN-IP helper, emulator notes
+- Sideloadable debug APK and `scripts/build-apk.ps1`
+
+### Fixed
+
+- Android ViewModel setter name clash that blocked `assembleDebug`

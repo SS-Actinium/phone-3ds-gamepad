@@ -32,3 +32,9 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Local Android SDK pointer
+android-app/local.properties
+
+# Built APKs live in GitHub Releases
+dist/*.apk

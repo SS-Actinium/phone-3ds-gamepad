@@ -45,11 +45,11 @@ class PadViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun setHost(value: String) {
+    fun updateHost(value: String) {
         host = value.filter { it.isDigit() || it == '.' }
     }
 
-    fun setPort(value: String) {
+    fun updatePort(value: String) {
         port = value.filter { it.isDigit() }.take(5)
     }
 
