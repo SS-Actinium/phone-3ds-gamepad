@@ -29,7 +29,7 @@ def _env_bool(name: str, default: bool) -> bool:
 class Config:
     host: str = "0.0.0.0"
     port: int = 26760
-    deadzone: float = 0.08
+    deadzone: float = 0.04
     log_level: str = "INFO"
     client_timeout: float = 1.5
     max_packet_bytes: int = 2048
@@ -44,7 +44,7 @@ class Config:
         return cls(
             host=_env("SERVER_HOST", "0.0.0.0"),
             port=int(_env("SERVER_PORT", "26760")),
-            deadzone=_env_float("DEADZONE", 0.08),
+            deadzone=_env_float("DEADZONE", 0.04),
             log_level=_env("LOG_LEVEL", "INFO").upper(),
             client_timeout=_env_float("CLIENT_TIMEOUT", 1.5),
             max_packet_bytes=int(_env("MAX_PACKET_BYTES", "2048")),
@@ -84,6 +84,6 @@ class Config:
 # Names expected by the brief (import-friendly defaults).
 SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 26760
-DEADZONE = 0.08
+DEADZONE = 0.04
 LOG_LEVEL = "INFO"
 CLIENT_TIMEOUT = 1.5

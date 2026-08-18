@@ -121,6 +121,8 @@ class VGamepadBackend:
         self._pad.release_button(button=self._button_enum[target])
 
     def set_axis(self, axis: str, x: float, y: float) -> None:
+        x = max(-1.0, min(1.0, float(x)))
+        y = max(-1.0, min(1.0, float(y)))
         if axis == "right":
             self._pad.right_joystick_float(x_value_float=x, y_value_float=y)
         else:
@@ -153,7 +155,7 @@ class VirtualController:
         self.invert_left_y = invert_left_y
         self.invert_right_y = invert_right_y
         self.mapper = InputMapper()
-        self.user_invert = False
+        self.user_invert = bool(invert_left_y or invert_right_y)
         self.pressed: set[XboxTarget] = set()
         self.axes: dict[str, tuple[float, float]] = {
             "left": (0.0, 0.0),

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 — 2026-08-18
+
+### Fixed
+
+- Circle Pad last position no longer dropped by the 90 Hz limiter (pending flush per stick)
+- ViGEm axis values clamped to [-1, 1]
+- Default PC dead zone 0.04 so Azahar does not stack a second large gate
+
 ## 0.3.0 — 2026-08-18
 
 ### Fixed

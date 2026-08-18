@@ -8,7 +8,7 @@ Android touch  →  Wi-Fi UDP JSON  →  Python server  →  vgamepad  →  Xbox
 
 The phone is the control surface only. The PC does **not** stream its screen.
 
-Version **0.3.0**.
+Version **0.3.1**.
 
 ## What you get
 
@@ -99,9 +99,9 @@ Axis lines are rate-limited so the console does not flood.
 
 ### Ready-made APK (sideload)
 
-A debug APK is attached to the [GitHub release](https://github.com/SS-Actinium/phone-3ds-gamepad/releases/tag/v0.3.0) and, if you built locally, at:
+A debug APK is attached to the [GitHub release](https://github.com/SS-Actinium/phone-3ds-gamepad/releases/tag/v0.3.1) and, if you built locally, at:
 
-`dist/HingePad-0.3.0-debug.apk`
+`dist/HingePad-0.3.1-debug.apk`
 
 1. Copy the APK to the phone (USB, Drive, Telegram to yourself, etc.).
 2. On the phone: Settings → Security → allow **Install unknown apps** for Files / Chrome / Drive.

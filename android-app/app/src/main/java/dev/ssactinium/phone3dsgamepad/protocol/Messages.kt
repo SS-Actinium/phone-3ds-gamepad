@@ -6,7 +6,7 @@ object Protocol {
     const val CLIENT_NAME = "hinge-pad"
     const val MAX_PACKET_BYTES = 2048
     const val HEARTBEAT_MS = 400L
-    const val STATE_SYNC_MS = 900L
+    const val STATE_SYNC_MS = 450L
     const val ACK_STALE_MS = 1800L
     const val AXIS_SEND_MIN_DELTA = 0.008f
     const val AXIS_MAX_HZ = 90

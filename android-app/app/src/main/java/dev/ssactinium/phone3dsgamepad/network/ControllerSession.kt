@@ -41,7 +41,8 @@ class ControllerSession {
     @Volatile private var profile: ControlProfile = ControlProfile.Xbox
     @Volatile private var remap: Map<String, String> = emptyMap()
     @Volatile private var invertStick: Boolean = false
-    @Volatile private var lastAxisSentAt = 0L
+    private val lastAxisSentAt = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val pendingAxis = java.util.concurrent.ConcurrentHashMap<String, StickSample>()
     @Volatile var uiState: SessionUiState = SessionUiState()
         private set
     var onUi: ((SessionUiState) -> Unit)? = null
@@ -120,11 +121,27 @@ class ControllerSession {
         if (!state.setStick(axis, sample) && sample.x == 0f && sample.y == 0f) return
         val now = System.currentTimeMillis()
         val minGap = 1000L / Protocol.AXIS_MAX_HZ
-        if (now - lastAxisSentAt < minGap && !sample.nearlyEquals(StickSample(0f, 0f), 0.001f)) {
+        val last = lastAxisSentAt[axis] ?: 0L
+        val centered = sample.nearlyEquals(StickSample(0f, 0f), 0.001f)
+        if (!centered && now - last < minGap) {
+            pendingAxis[axis] = sample
             return
         }
-        lastAxisSentAt = now
+        pendingAxis.remove(axis)
+        lastAxisSentAt[axis] = now
         enqueue(PacketEncoder.axis(axis, sample.x, sample.y))
+    }
+
+    private fun flushPendingAxes() {
+        val now = System.currentTimeMillis()
+        val minGap = 1000L / Protocol.AXIS_MAX_HZ
+        for (axis in pendingAxis.keys.toList()) {
+            val last = lastAxisSentAt[axis] ?: 0L
+            if (now - last < minGap) continue
+            val sample = pendingAxis.remove(axis) ?: continue
+            lastAxisSentAt[axis] = now
+            enqueue(PacketEncoder.axis(axis, sample.x, sample.y))
+        }
     }
 
     fun applyMap(profile: ControlProfile, remap: Map<String, String>, invertStick: Boolean) {
@@ -159,6 +176,7 @@ class ControllerSession {
             var lastSync = 0L
             var fails = 0
             while (running.get()) {
+                flushPendingAxes()
                 var outgoing = outbox.poll()
                 while (outgoing != null) {
                     if (!transport.send(outgoing)) {
