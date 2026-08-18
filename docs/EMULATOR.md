@@ -29,17 +29,34 @@ The server’s job is to present a **standard Xbox 360 / XInput** device. Button
 
 ## Azahar Plus (why it failed before)
 
-Azahar Auto Map treats the virtual pad as an **Xbox** diamond (A south, B east). Hinge Pad labels follow a **3DS** diamond (A east, B south). Letter-match made in-game A/B feel swapped or dead.
+Azahar does **not** poll XInput like Arkham Origins. It uses **SDL2**. Until you bind a profile, Azahar only reads the **keyboard**. A working `joy.cpl` pad is still invisible until Auto Map.
 
-1. Double-click `Start-HingePad.bat` and wait until the log says Listening.
-2. Confirm `joy.cpl` shows Xbox 360 Controller.
-3. **Then** start Azahar Plus.
-4. On the phone: **3DS / Azahar** → Connect.
-5. Azahar → Emulation → Configure → Controls → **Auto Map** (or click 3DS A and press A on the phone).
-6. Save a profile named `hinge-3ds`.
-7. If the pad is missing: close Azahar, leave the server running, open Azahar again.
+Auto Map asks you to press the **A (right / east)** face button. The **first** button it sees picks the table:
 
-C-Stick is the smaller right pad (New 3DS camera). Circle Pad is the large left pad.
+| You press first | Azahar table | Hinge Pad preset |
+|-----------------|--------------|------------------|
+| Phone **A** (right, red) with preset **3DS / Azahar** | Xbox positional (east = 3DS A) | **3DS / Azahar** |
+| Phone **A** with preset **Xbox games** (south Xbox A) | Nintendo letter (A = A) | **Xbox games** |
+
+Use **one** swap layer. 3DS preset + Auto Map on the **right** A is the usual 3DS setup.
+
+### Bind steps
+
+1. Double-click `Start-HingePad.bat`. Wait for Listening.
+2. Win+R → `joy.cpl` → Xbox 360 Controller. Test A.
+3. Quit Steam or disable **Steam Input** for Azahar (Steam can hide the pad from SDL).
+4. **Then** open Azahar Plus.
+5. Phone: **3DS / Azahar** → Connect. Keep the pad connected.
+6. Azahar → **Emulation → Configure → Controls**.
+7. Mapping type: **All controllers** (not GUID+port).
+8. **New** profile → name `hinge-3ds` → **Clear All**.
+9. **Auto Map** → OK → press phone **A** (right) and **release** it. Auto Map reads the **release**.
+10. Confirm Circle Pad = left stick, C-Stick = right stick, ZL/ZR = LT/RT.
+11. **OK**. Start the game with Azahar focused.
+
+If inputs die after you restart the server: reopen Controls or restart Azahar with the server already running.
+
+C-Stick is the smaller right pad (New 3DS camera). Enable **New 3DS** in Azahar System or C-Stick is unused. Circle Pad is the large left pad.
 
 ## Test path
 
